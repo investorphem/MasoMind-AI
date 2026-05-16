@@ -4,7 +4,16 @@
 
 @layer base {
   body {
-    background-color: #09090b; /* zinc-950 */
-    color: #f4f4f5; /* zinc-100 */
+    background-color: #09090b; /* Deep Zinc Black */
+    color: #f4f4f5;
+    -webkit-font-smoothing: antialiased;
   }
+}
+
+/* Premium gradient animations */
+.glass-panel {
+  background: rgba(24, 24, 27, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
