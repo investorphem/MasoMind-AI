@@ -1,50 +1,38 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient, http } from 'viem';
-import { celo } from 'viem/chains';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req) {
   try {
     const { prompt } = await req.json();
 
-    // 1. Initialize viem's Public Client instead of ethers JsonRpcProvider
-    const publicClient = createPublicClient({
-      chain: celo,
-      transport: http('https://forno.celo.org')
-    });
+    // 1. Initialize the new Google Gen AI SDK
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    // (Optional) If you ever need to read contract state on the backend:
-    // await publicClient.readContract({ ... })
-
-    // 2. Call your OpenAI API key
-    const aiResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
+    // 2. Call Gemini's Imagen model for image generation
+    const response = await ai.models.generateImages({
+        model: 'imagen-3.0-generate-002',
         prompt: prompt,
-        n: 1,
-        size: "512x512"
-      })
+        config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/jpeg',
+            aspectRatio: '1:1', // Perfect for our mobile UI square
+        },
     });
 
-    const data = await aiResponse.json();
-    
-    if (data && data.data && data.data[0]) {
-      const imageUrl = data.data[0].url;
-      return NextResponse.json({ imageUrl });
-    }
+    // 3. The SDK returns the image in base64 format, so we format it for the frontend
+    const base64Image = response.generatedImages[0].image.imageBytes;
+    const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    throw new Error("OpenAI did not return an image");
+    return NextResponse.json({ imageUrl });
 
   } catch (error) {
-    console.log("Using fallback generator due to:", error.message);
+    console.error("Gemini Generation Error:", error);
     
+    // Fallback template for quick testing
     let promptText = "Futuristic canvas";
     try {
-      const body = await req.json();
-      if (body.prompt) promptText = body.prompt;
+        const body = await req.json();
+        if (body.prompt) promptText = body.prompt;
     } catch (e) {}
 
     const testFallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptText)}?width=512&height=512&nologo=true`;
