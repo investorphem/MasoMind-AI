@@ -5,11 +5,11 @@ import { celo } from 'viem/chains';
 // IMPORTANT: Replace this with your newly deployed V2 Contract Address!
 const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 
-// Strict token registry to verify the exact token decimals
+// Strict token registry to verify the exact token decimals (pre-lowercased)
 const TOKENS = {
-  '0x765DE816845861e75A25fCA122bb6898B8B1282a'.toLowerCase(): 18, // cUSD
-  '0xcebA9300f2b948710d2653dD7B07f33A8B32118C'.toLowerCase(): 6,  // USDC
-  '0x48065fbBE25f71C9282ddf5e1cD6D6A88248a566'.toLowerCase(): 6   // USDT
+  '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD
+  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,  // USDC
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a88248a566': 6   // USDT
 };
 
 // The ABI for the exact function we are analyzing
