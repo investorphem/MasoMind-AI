@@ -136,9 +136,12 @@ export async function POST(req) {
       const data = await response.json();
       const auditReport = data.candidates[0].content.parts[0].text;
 
-      // Mark as COMPLETED in the vault
+      // Mark as COMPLETED in the vault AND save the result payload
       await supabase.from('transactions')
-        .update({ status: 'COMPLETED' })
+        .update({ 
+          status: 'COMPLETED',
+          result_data: auditReport
+        })
         .eq('tx_hash', txHash);
 
       return NextResponse.json({ report: auditReport });
