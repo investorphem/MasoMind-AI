@@ -10,7 +10,7 @@ const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,  // USDC
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6   // USDT
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a88248a566': 6   // USDT
 };
 
 // The ABI for the exact function we are analyzing
@@ -122,9 +122,12 @@ export async function POST(req) {
       const randomSeed = Math.floor(Math.random() * 1000000);
       const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${randomSeed}`;
 
-      // Mark as COMPLETED in the vault
+      // Mark as COMPLETED in the vault AND save the result payload
       await supabase.from('transactions')
-        .update({ status: 'COMPLETED' })
+        .update({ 
+          status: 'COMPLETED',
+          result_data: imageUrl
+        })
         .eq('tx_hash', txHash);
 
       return NextResponse.json({ imageUrl });
