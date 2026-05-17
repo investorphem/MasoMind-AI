@@ -84,7 +84,7 @@ export async function POST(req) {
       });
 
       const data = await response.json();
-      
+
       let mediaUrl = '';
       if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
          const base64Audio = data.candidates[0].content.parts[0].inlineData.data;
@@ -94,7 +94,12 @@ export async function POST(req) {
          throw new Error("API limits reached or invalid generation");
       }
 
-      await supabase.from('transactions').update({ status: 'COMPLETED' }).eq('tx_hash', txHash);
+      // Mark as COMPLETED in the vault AND save the generated audio payload
+      await supabase.from('transactions').update({ 
+        status: 'COMPLETED',
+        result_data: mediaUrl
+      }).eq('tx_hash', txHash);
+      
       return NextResponse.json({ mediaUrl });
 
     } catch (aiError) {
