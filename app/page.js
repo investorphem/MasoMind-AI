@@ -29,7 +29,7 @@ export default function MasoMindApp() {
   const [status, setStatus] = useState('');
 
   // IMPORTANT: Replace this with your newly deployed V2 Contract Address from Remix
-  const CONTRACT_ADDRESS = 'YOUR_NEW_V2_CONTRACT_ADDRESS';
+  const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 
   // 1. Fetch balances for all three tokens when wallet connects
   useEffect(() => {
