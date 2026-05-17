@@ -12,7 +12,7 @@ export default function MasoMindApp() {
   const { isConnected, address } = useAccount(); // Added address extraction
   const { connect } = useConnect();
   const { writeContractAsync, isPending } = useWriteContract();
-  
+
   const [prompt, setPrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState(null);
   const [status, setStatus] = useState('');
@@ -22,6 +22,9 @@ export default function MasoMindApp() {
 
   const triggerGeneration = async () => {
     if (!prompt || !address) return;
+
+    // THE FIX: Clear the old image instantly so the loading spinner shows up!
+    setGeneratedImage(null);
 
     try {
       // Initialize Viem Client to read the blockchain
@@ -95,9 +98,9 @@ export default function MasoMindApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
-      
+
       const data = await res.json();
-      
+
       if (data.imageUrl) {
         setGeneratedImage(data.imageUrl);
         setStatus('');
@@ -114,7 +117,7 @@ export default function MasoMindApp() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
-      
+
       <header className="flex justify-between items-center py-4 px-2 mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
@@ -125,7 +128,7 @@ export default function MasoMindApp() {
             <p className="text-[10px] text-emerald-500/70 uppercase tracking-widest font-mono">Enterprise Agent</p>
           </div>
         </div>
-        
+
         {!isMiniPay && !isConnected ? (
            <button 
              onClick={() => connect({ connector: injected() })}
@@ -150,7 +153,7 @@ export default function MasoMindApp() {
         ) : (
           <div className="w-full aspect-square rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
-            
+
             {isPending || status ? (
               <div className="space-y-4 flex flex-col items-center relative z-10">
                 <div className="p-4 bg-zinc-900 rounded-full border border-zinc-800 shadow-inner">
