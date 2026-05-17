@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2 } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 
@@ -11,7 +11,7 @@ import Link from 'next/link';
 const TOKENS = {
   cUSD: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18, symbol: 'cUSD' },
   USDC: { address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', decimals: 6, symbol: 'USDC' },
-  USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6, symbol: 'USDT' }
+  USDT: { address: '0x48065fbBE25f71C9282ddf5e1cD6D6A88248a566', decimals: 6, symbol: 'USDT' }
 };
 
 export default function MasoMindApp() {
@@ -20,7 +20,7 @@ export default function MasoMindApp() {
   const { connect, connectors } = useConnect();
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const [mode, setMode] = useState('IMAGE'); // 'IMAGE', 'AUDIT', 'MUSIC', 'VIDEO'
+  const [mode, setMode] = useState('IMAGE'); 
   const [activeToken, setActiveToken] = useState('cUSD');
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); 
@@ -28,8 +28,9 @@ export default function MasoMindApp() {
   const [prompt, setPrompt] = useState('');
   const [resultData, setResultData] = useState(null); 
   const [status, setStatus] = useState('');
+  
+  const [pendingState, setPendingState] = useState(null);
 
-  // IMPORTANT: Replace this with your newly deployed V2 Contract Address from Remix
   const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 
   useEffect(() => {
@@ -58,75 +59,93 @@ export default function MasoMindApp() {
   }, [address]);
 
   useEffect(() => {
-    const recoverLostTransaction = async () => {
-      const savedHash = localStorage.getItem('pendingTxHash');
-      const savedPrompt = localStorage.getItem('pendingPrompt');
-      const savedMode = localStorage.getItem('pendingMode');
+    const hash = localStorage.getItem('pendingTxHash');
+    const savedPrompt = localStorage.getItem('pendingPrompt');
+    const savedMode = localStorage.getItem('pendingMode');
 
-      if (savedHash && savedPrompt && savedMode) {
-        setStatus('Recovering interrupted transaction...');
-        try {
-          let endpoint = '/api/generate-image';
-          if (savedMode === 'AUDIT') endpoint = '/api/audit-code';
-          if (savedMode === 'MUSIC') endpoint = '/api/generate-music';
-          if (savedMode === 'VIDEO') endpoint = '/api/generate-video';
-
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: savedPrompt, txHash: savedHash })
-          });
-          const data = await res.json();
-
-          if (data.imageUrl || data.report || data.mediaUrl) {
-            setResultData(data.imageUrl || data.report || data.mediaUrl);
-            setMode(savedMode);
-            localStorage.removeItem('pendingTxHash');
-            localStorage.removeItem('pendingPrompt');
-            localStorage.removeItem('pendingMode');
-            setStatus('');
-          } else {
-            setStatus('Recovery failed. Please try executing again.');
-            setTimeout(() => setStatus(''), 4000);
-          }
-        } catch (e) {
-          setStatus('Recovery error. Network might be down.');
-          setTimeout(() => setStatus(''), 4000);
-        }
-      }
-    };
-    recoverLostTransaction();
+    if (hash && savedPrompt && savedMode) {
+      setPendingState({ hash, prompt: savedPrompt, mode: savedMode });
+      setPrompt(savedPrompt);
+      setMode(savedMode);
+    }
   }, []);
 
+  // THE NATIVE MOBILE DOWNLOAD FIX
   const downloadAsset = async () => {
     if (!resultData || mode === 'AUDIT') return;
+    
     try {
-      const response = await fetch(resultData);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      let extension = 'jpg';
-      if (mode === 'MUSIC') extension = 'mp3';
-      if (mode === 'VIDEO') extension = 'mp4';
-      
-      link.download = `MasoMind-Asset-${Date.now()}.${extension}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Use the phone's native sharing/save menu if available (Highly reliable on mobile)
+      if (navigator.share && mode === 'IMAGE') {
+        await navigator.share({
+          title: 'MasoMind Asset',
+          text: 'Generated on MasoMind AI',
+          url: resultData
+        });
+      } else {
+        // Fallback for Desktop or Base64 Media (Music/Video)
+        if (mode === 'IMAGE') {
+           window.open(resultData, '_blank');
+        } else {
+           const a = document.createElement("a");
+           a.href = resultData;
+           a.download = `MasoMind-Asset-${Date.now()}.${mode === 'MUSIC' ? 'mp3' : 'mp4'}`;
+           document.body.appendChild(a);
+           a.click();
+           document.body.removeChild(a);
+        }
+      }
     } catch (err) {
-      console.error("Download failed:", err);
+      console.error("Native share failed, falling back to new tab:", err);
+      // Ultimate fallback: just open it!
+      window.open(resultData, '_blank');
     }
+  };
+
+  const invokeAPI = async (targetPrompt, targetHash, targetMode) => {
+    setStatus(`Processing AI ${targetMode} Engine...`);
+    let endpoint = '/api/generate-image';
+    if (targetMode === 'AUDIT') endpoint = '/api/audit-code';
+    if (targetMode === 'MUSIC') endpoint = '/api/generate-music';
+    if (targetMode === 'VIDEO') endpoint = '/api/generate-video';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: targetPrompt, txHash: targetHash }) 
+      });
+
+      const data = await res.json();
+
+      if (data.imageUrl || data.report || data.mediaUrl) {
+        setResultData(data.imageUrl || data.report || data.mediaUrl);
+        localStorage.removeItem('pendingTxHash');
+        localStorage.removeItem('pendingPrompt');
+        localStorage.removeItem('pendingMode');
+        setPendingState(null);
+      } else {
+         setStatus(data.error || 'AI limits reached or API failed. You can retry.');
+         setTimeout(() => setStatus(''), 5000);
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus('Network timeout. Your funds are safe, please retry.');
+      setTimeout(() => setStatus(''), 5000);
+    }
+    setStatus('');
   };
 
   const executeService = async () => {
     if (!prompt || !address) return;
-
     setResultData(null);
-    const token = TOKENS[activeToken];
 
+    if (pendingState) {
+      await invokeAPI(pendingState.prompt, pendingState.hash, pendingState.mode);
+      return;
+    }
+
+    const token = TOKENS[activeToken];
     let priceStr = '0.05'; 
     if (mode === 'IMAGE') priceStr = '0.10';
     if (mode === 'MUSIC') priceStr = '0.50';
@@ -187,38 +206,23 @@ export default function MasoMindApp() {
       localStorage.setItem('pendingTxHash', txHash);
       localStorage.setItem('pendingPrompt', prompt);
       localStorage.setItem('pendingMode', mode);
+      setPendingState({ hash: txHash, prompt, mode });
 
-      setStatus(`Processing AI ${mode} Engine...`);
+      await invokeAPI(prompt, txHash, mode);
 
-      let endpoint = '/api/generate-image';
-      if (mode === 'AUDIT') endpoint = '/api/audit-code';
-      if (mode === 'MUSIC') endpoint = '/api/generate-music';
-      if (mode === 'VIDEO') endpoint = '/api/generate-video';
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, txHash }) 
-      });
-
-      const data = await res.json();
-
-      if (data.imageUrl || data.report || data.mediaUrl) {
-        setResultData(data.imageUrl || data.report || data.mediaUrl);
-        localStorage.removeItem('pendingTxHash');
-        localStorage.removeItem('pendingPrompt');
-        localStorage.removeItem('pendingMode');
-      } else {
-         setStatus(data.error || 'API Processing Failed. App will auto-recover.');
-         setTimeout(() => setStatus(''), 4000);
-      }
-
-      setStatus('');
     } catch (err) {
       console.error(err);
       setStatus('Transaction rejected or failed.');
       setTimeout(() => setStatus(''), 4000);
     }
+  };
+
+  const clearPendingState = () => {
+    localStorage.removeItem('pendingTxHash');
+    localStorage.removeItem('pendingPrompt');
+    localStorage.removeItem('pendingMode');
+    setPendingState(null);
+    setPrompt('');
   };
 
   return (
@@ -249,9 +253,7 @@ export default function MasoMindApp() {
                    ? connectors.find(c => c.id === 'injected') 
                    : connectors.find(c => c.id === 'walletConnect');
                  
-                 if (targetConnector) {
-                   connect({ connector: targetConnector });
-                 }
+                 if (targetConnector) connect({ connector: targetConnector });
                }} 
                className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all border border-zinc-800"
              >
@@ -268,24 +270,12 @@ export default function MasoMindApp() {
                 <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {isDropdownOpen && (
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setIsDropdownOpen(false)}
-                />
-              )}
+              {isDropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />}
 
               {isDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-50 glass-panel">
                   {Object.keys(TOKENS).map((token) => (
-                    <button
-                      key={token}
-                      onClick={() => {
-                        setActiveToken(token);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-3 text-xs hover:bg-zinc-800/80 transition-colors ${activeToken === token ? 'bg-zinc-800/50 border-l-2 border-emerald-500' : 'border-l-2 border-transparent'}`}
-                    >
+                    <button key={token} onClick={() => { setActiveToken(token); setIsDropdownOpen(false); }} className={`w-full flex items-center justify-between px-4 py-3 text-xs hover:bg-zinc-800/80 transition-colors ${activeToken === token ? 'bg-zinc-800/50 border-l-2 border-emerald-500' : 'border-l-2 border-transparent'}`}>
                       <span className={`font-mono font-bold ${activeToken === token ? 'text-emerald-400' : 'text-zinc-300'}`}>{token}</span>
                       <span className="text-zinc-500 font-mono">{balances[token]}</span>
                     </button>
@@ -296,32 +286,14 @@ export default function MasoMindApp() {
           )}
         </div>
 
-        <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
-          <button 
-            onClick={() => { setMode('IMAGE'); setResultData(null); }}
-            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            <ImageIcon className="w-4 h-4" /> Image
-          </button>
-          <button 
-            onClick={() => { setMode('AUDIT'); setResultData(null); }}
-            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            <Code className="w-4 h-4" /> Audit
-          </button>
-          <button 
-            onClick={() => { setMode('MUSIC'); setResultData(null); }}
-            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            <Music className="w-4 h-4" /> Music
-          </button>
-          <button 
-            onClick={() => { setMode('VIDEO'); setResultData(null); }}
-            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            <Video className="w-4 h-4" /> Video
-          </button>
-        </div>
+        {!pendingState && (
+          <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
+            <button onClick={() => { setMode('IMAGE'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
+            <button onClick={() => { setMode('AUDIT'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
+            <button onClick={() => { setMode('MUSIC'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
+            <button onClick={() => { setMode('VIDEO'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
@@ -332,7 +304,7 @@ export default function MasoMindApp() {
                 <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
                 <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px] relative z-10" />
                 <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
-                  <Download className="w-5 h-5 text-white" />
+                  <Share2 className="w-5 h-5 text-white" />
                 </button>
               </div>
             )}
@@ -352,7 +324,7 @@ export default function MasoMindApp() {
                   Your browser does not support the audio element.
                 </audio>
                 <button onClick={downloadAsset} className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl text-xs font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2">
-                  <Download className="w-4 h-4" /> Download 30s Track
+                  <Download className="w-4 h-4" /> Download Track
                 </button>
               </div>
             )}
@@ -374,8 +346,18 @@ export default function MasoMindApp() {
                 <div className="p-4 bg-zinc-900 rounded-full border border-zinc-800 shadow-inner">
                   <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
                 </div>
-                <p className="text-sm text-zinc-400 font-medium tracking-wide animate-pulse">{status}</p>
+                <p className="text-sm text-zinc-400 font-medium tracking-wide text-center">{status || 'Processing...'}</p>
               </div>
+            ) : pendingState ? (
+               <div className="relative z-10 flex flex-col items-center w-full">
+                  <div className="p-4 bg-amber-500/10 rounded-full border border-amber-500/20 mb-4 shadow-inner">
+                    <RefreshCw className="w-10 h-10 text-amber-500" />
+                  </div>
+                  <h3 className="text-amber-400 font-bold mb-2 tracking-wide text-sm uppercase">Unfinished Generation</h3>
+                  <p className="text-xs text-zinc-400 text-center mb-6 px-4">
+                    The payment processed, but AI failed to complete. Retry below without paying again.
+                  </p>
+               </div>
             ) : (
               <div className="relative z-10 flex flex-col items-center">
                 <div className="p-5 bg-zinc-900 rounded-2xl border border-zinc-800 mb-4 shadow-inner">
@@ -413,27 +395,40 @@ export default function MasoMindApp() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Paste contract code..."
               rows={2}
-              className="w-full pl-4 pr-28 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none"
+              disabled={!!pendingState}
+              className="w-full pl-4 pr-32 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none disabled:opacity-50"
             />
           ) : (
             <input 
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              disabled={!!pendingState}
               placeholder={
                 mode === 'IMAGE' ? "Initialize intent..." :
                 mode === 'MUSIC' ? "e.g., Upbeat cyberpunk synthwave..." :
                 "e.g., A neon cityscape cinematic pan..."
               }
-              className="w-full pl-4 pr-28 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600"
+              className="w-full pl-4 pr-32 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 disabled:opacity-50"
             />
           )}
+
+          {pendingState && (
+            <button 
+              onClick={clearPendingState}
+              className="absolute right-28 p-2 text-zinc-500 hover:text-red-400 transition-colors"
+              title="Discard Recovery"
+            >
+              <XCircle className="w-5 h-5" />
+            </button>
+          )}
+
           <button 
             onClick={executeService}
             disabled={!prompt || isPending || status !== ''}
-            className="absolute right-2 top-2 bottom-2 px-5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs rounded-xl transition-all disabled:opacity-30 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+            className={`absolute right-2 top-2 bottom-2 px-5 font-bold text-xs rounded-xl transition-all disabled:opacity-30 flex items-center justify-center ${pendingState ? 'bg-amber-500 hover:bg-amber-400 text-zinc-900 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}
           >
-            Execute
+            {pendingState ? 'Retry API' : 'Execute'}
           </button>
         </div>
       </footer>
