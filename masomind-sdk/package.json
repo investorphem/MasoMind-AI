@@ -1,6 +1,6 @@
 {
   "name": "masomind-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The official Web3 AI SDK for Masonode Technologies. Generate assets and audit smart contracts seamlessly on Celo.",
   "main": "index.js",
   "type": "module",
