@@ -10,7 +10,7 @@ const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': 18,
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a882483d5e': 6
 };
 
 const ABI = [{
@@ -84,7 +84,7 @@ export async function POST(req) {
       });
 
       const data = await response.json();
-      
+
       let mediaUrl = '';
       if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
          const base64Video = data.candidates[0].content.parts[0].inlineData.data;
@@ -94,7 +94,12 @@ export async function POST(req) {
          throw new Error("API limits reached or invalid generation");
       }
 
-      await supabase.from('transactions').update({ status: 'COMPLETED' }).eq('tx_hash', txHash);
+      // Mark as COMPLETED in the vault AND save the generated video payload
+      await supabase.from('transactions').update({ 
+        status: 'COMPLETED',
+        result_data: mediaUrl
+      }).eq('tx_hash', txHash);
+      
       return NextResponse.json({ mediaUrl });
 
     } catch (aiError) {
