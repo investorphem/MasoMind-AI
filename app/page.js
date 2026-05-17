@@ -16,14 +16,31 @@ export default function MasoMindApp() {
   const [generatedImage, setGeneratedImage] = useState(null);
   const [status, setStatus] = useState('');
 
+  // Your actual live deployed contract
   const CONTRACT_ADDRESS = '0xa96853decf20e65c7b657722815c515074c4ced0';
+  // Official Celo Mainnet cUSD Address
+  const CUSD_ADDRESS = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
   const triggerGeneration = async () => {
     if (!prompt) return;
-    setStatus('Awaiting MiniPay Signature...');
-
+    
     try {
-      const tx = await writeContractAsync({
+      // STEP 1: Approve the cUSD Transfer
+      setStatus('Step 1: Approving 0.10 cUSD...');
+      await writeContractAsync({
+        address: CUSD_ADDRESS,
+        abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]}],
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS, parseEther('0.10')],
+      });
+
+      // Wait a few seconds for the Celo blockchain to register the approval
+      setStatus('Blockchain syncing... please wait 4 seconds.');
+      await new Promise(resolve => setTimeout(resolve, 4000));
+
+      // STEP 2: Execute the Payment and Prompt
+      setStatus('Step 2: Confirming Payment...');
+      await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: [{
           "name": "requestImage",
@@ -35,13 +52,14 @@ export default function MasoMindApp() {
         args: [prompt],
       });
 
+      // STEP 3: Generate the Image
       setStatus('Processing AI Asset...');
-      
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
+      
       const data = await res.json();
       
       if (data.imageUrl) {
@@ -49,17 +67,18 @@ export default function MasoMindApp() {
         setStatus('');
       } else {
         setStatus('Generation failed. Please retry.');
+        setTimeout(() => setStatus(''), 3000);
       }
     } catch (err) {
       console.error(err);
-      setStatus('');
+      setStatus('Transaction canceled or failed. Try again.');
+      setTimeout(() => setStatus(''), 3000);
     }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
       
-      {/* Enterprise Header */}
       <header className="flex justify-between items-center py-4 px-2 mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
@@ -86,7 +105,6 @@ export default function MasoMindApp() {
         )}
       </header>
 
-      {/* Main Canvas Area */}
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
         {generatedImage ? (
           <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square">
@@ -117,7 +135,6 @@ export default function MasoMindApp() {
         )}
       </main>
 
-      {/* Input Console */}
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
         <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1">
           <input 
