@@ -4,12 +4,13 @@ import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { createPublicClient, custom, parseEther, formatEther } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint } from 'lucide-react';
+// ADDED: The Download icon to the Lucide import
+import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 
 export default function MasoMindApp() {
   const isMiniPay = useMiniPay();
-  const { isConnected, address } = useAccount(); // Added address extraction
+  const { isConnected, address } = useAccount(); 
   const { connect } = useConnect();
   const { writeContractAsync, isPending } = useWriteContract();
 
@@ -20,20 +21,40 @@ export default function MasoMindApp() {
   const CONTRACT_ADDRESS = '0xa96853decf20e65c7b657722815c515074c4ced0';
   const CUSD_ADDRESS = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
+  // NEW: Secure Download Function
+  const downloadImage = async () => {
+    if (!generatedImage) return;
+    try {
+      const response = await fetch(generatedImage);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `MasoMind-Asset-${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      setStatus('Failed to download image.');
+      setTimeout(() => setStatus(''), 3000);
+    }
+  };
+
   const triggerGeneration = async () => {
     if (!prompt || !address) return;
 
-    // THE FIX: Clear the old image instantly so the loading spinner shows up!
     setGeneratedImage(null);
 
     try {
-      // Initialize Viem Client to read the blockchain
       const publicClient = createPublicClient({
         chain: celo,
         transport: custom(window.ethereum)
       });
 
-      // 1. PRE-FLIGHT BALANCE CHECK
       setStatus('Checking wallet balance...');
       const balance = await publicClient.readContract({
         address: CUSD_ADDRESS,
@@ -46,10 +67,9 @@ export default function MasoMindApp() {
         const readableBalance = Number(formatEther(balance)).toFixed(2);
         setStatus(`Low Balance Alert: You only have ${readableBalance} cUSD.`);
         setTimeout(() => setStatus(''), 5000);
-        return; // Stops the transaction completely
+        return; 
       }
 
-      // 2. SMART ALLOWANCE CHECK
       setStatus('Checking contract permissions...');
       const allowance = await publicClient.readContract({
         address: CUSD_ADDRESS,
@@ -58,10 +78,8 @@ export default function MasoMindApp() {
         args: [address, CONTRACT_ADDRESS],
       });
 
-      // If allowance is less than 0.10 cUSD, ask for approval
       if (allowance < parseEther('0.10')) {
         setStatus('Step 1: Approving cUSD limit...');
-        // We approve 10 cUSD so you don't have to do this step again for the next 100 images!
         const approveHash = await writeContractAsync({
           address: CUSD_ADDRESS,
           abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]}],
@@ -70,11 +88,9 @@ export default function MasoMindApp() {
         });
 
         setStatus('Waiting for blockchain confirmation...');
-        // This actively listens for the exact moment the block is verified
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
       }
 
-      // 3. EXECUTE PAYMENT
       setStatus('Step 2: Executing 0.10 cUSD Payment...');
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
@@ -91,7 +107,6 @@ export default function MasoMindApp() {
       setStatus('Confirming payment on chain...');
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      // 4. GENERATE AI IMAGE
       setStatus('Processing AI Asset via Gemini...');
       const res = await fetch('/api/generate-image', {
         method: 'POST',
@@ -145,10 +160,19 @@ export default function MasoMindApp() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
+        {/* ADDED: The group class to the container and the Download button overlay */}
         {generatedImage ? (
-          <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square">
+          <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square group">
             <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
             <img src={generatedImage} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px] relative z-10" />
+            
+            <button 
+              onClick={downloadImage}
+              className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg backdrop-blur-md transition-all flex items-center justify-center"
+              aria-label="Download Image"
+            >
+              <Download className="w-5 h-5 text-white" />
+            </button>
           </div>
         ) : (
           <div className="w-full aspect-square rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden">
