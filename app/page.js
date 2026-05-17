@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, Wallet, ChevronDown } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 
@@ -20,10 +20,10 @@ export default function MasoMindApp() {
   const { connect, connectors } = useConnect();
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const [mode, setMode] = useState('IMAGE'); // 'IMAGE' or 'AUDIT'
+  const [mode, setMode] = useState('IMAGE'); // 'IMAGE', 'AUDIT', 'MUSIC', 'VIDEO'
   const [activeToken, setActiveToken] = useState('cUSD');
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Controls the custom token dropdown
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); 
 
   const [prompt, setPrompt] = useState('');
   const [resultData, setResultData] = useState(null); 
@@ -32,7 +32,6 @@ export default function MasoMindApp() {
   // IMPORTANT: Replace this with your newly deployed V2 Contract Address from Remix
   const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 
-  // 1. Fetch balances for all three tokens when wallet connects
   useEffect(() => {
     if (!address) return;
     const fetchBalances = async () => {
@@ -58,17 +57,20 @@ export default function MasoMindApp() {
     fetchBalances();
   }, [address]);
 
-  // 2. The Auto-Recovery System (Runs on app load to catch dropped transactions)
   useEffect(() => {
     const recoverLostTransaction = async () => {
       const savedHash = localStorage.getItem('pendingTxHash');
       const savedPrompt = localStorage.getItem('pendingPrompt');
       const savedMode = localStorage.getItem('pendingMode');
 
-      if (savedHash && savedPrompt) {
+      if (savedHash && savedPrompt && savedMode) {
         setStatus('Recovering interrupted transaction...');
         try {
-          const endpoint = savedMode === 'IMAGE' ? '/api/generate-image' : '/api/audit-code';
+          let endpoint = '/api/generate-image';
+          if (savedMode === 'AUDIT') endpoint = '/api/audit-code';
+          if (savedMode === 'MUSIC') endpoint = '/api/generate-music';
+          if (savedMode === 'VIDEO') endpoint = '/api/generate-video';
+
           const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -76,10 +78,9 @@ export default function MasoMindApp() {
           });
           const data = await res.json();
 
-          if (data.imageUrl || data.report) {
-            setResultData(data.imageUrl || data.report);
+          if (data.imageUrl || data.report || data.mediaUrl) {
+            setResultData(data.imageUrl || data.report || data.mediaUrl);
             setMode(savedMode);
-            // Transaction secure, clear memory
             localStorage.removeItem('pendingTxHash');
             localStorage.removeItem('pendingPrompt');
             localStorage.removeItem('pendingMode');
@@ -97,15 +98,20 @@ export default function MasoMindApp() {
     recoverLostTransaction();
   }, []);
 
-  const downloadImage = async () => {
-    if (!resultData || mode !== 'IMAGE') return;
+  const downloadAsset = async () => {
+    if (!resultData || mode === 'AUDIT') return;
     try {
       const response = await fetch(resultData);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `MasoMind-Asset-${Date.now()}.jpg`;
+      
+      let extension = 'jpg';
+      if (mode === 'MUSIC') extension = 'mp3';
+      if (mode === 'VIDEO') extension = 'mp4';
+      
+      link.download = `MasoMind-Asset-${Date.now()}.${extension}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -121,21 +127,22 @@ export default function MasoMindApp() {
     setResultData(null);
     const token = TOKENS[activeToken];
 
-    // Configurable Pricing
-    const priceStr = mode === 'IMAGE' ? '0.10' : '0.05';
+    let priceStr = '0.05'; 
+    if (mode === 'IMAGE') priceStr = '0.10';
+    if (mode === 'MUSIC') priceStr = '0.50';
+    if (mode === 'VIDEO') priceStr = '1.00';
+    
     const amountToCharge = parseUnits(priceStr, token.decimals);
 
     try {
       const publicClient = createPublicClient({ chain: celo, transport: custom(window.ethereum || window.parent?.ethereum) });
 
-      // STEP 1: Balance Check
       if (Number(balances[activeToken]) < Number(priceStr)) {
         setStatus(`Low Balance: You need ${priceStr} ${activeToken}.`);
         setTimeout(() => setStatus(''), 5000);
         return; 
       }
 
-      // STEP 2: Smart Allowance
       setStatus(`Checking ${activeToken} permissions...`);
       const allowance = await publicClient.readContract({
         address: token.address,
@@ -156,7 +163,6 @@ export default function MasoMindApp() {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
       }
 
-      // STEP 3: Execute Payment
       setStatus(`Executing ${priceStr} ${activeToken} Payment...`);
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
@@ -178,15 +184,17 @@ export default function MasoMindApp() {
       setStatus('Confirming transaction on chain...');
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      // STEP 4: Lock to Memory BEFORE fetching API (The Fail-Safe)
       localStorage.setItem('pendingTxHash', txHash);
       localStorage.setItem('pendingPrompt', prompt);
       localStorage.setItem('pendingMode', mode);
 
-      // STEP 5: Route to Correct API
-      setStatus(`Processing AI ${mode === 'IMAGE' ? 'Asset' : 'Audit'}...`);
+      setStatus(`Processing AI ${mode} Engine...`);
 
-      const endpoint = mode === 'IMAGE' ? '/api/generate-image' : '/api/audit-code';
+      let endpoint = '/api/generate-image';
+      if (mode === 'AUDIT') endpoint = '/api/audit-code';
+      if (mode === 'MUSIC') endpoint = '/api/generate-music';
+      if (mode === 'VIDEO') endpoint = '/api/generate-video';
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,9 +203,8 @@ export default function MasoMindApp() {
 
       const data = await res.json();
 
-      if (data.imageUrl || data.report) {
-        setResultData(data.imageUrl || data.report);
-        // Safely clear memory since it was successful
+      if (data.imageUrl || data.report || data.mediaUrl) {
+        setResultData(data.imageUrl || data.report || data.mediaUrl);
         localStorage.removeItem('pendingTxHash');
         localStorage.removeItem('pendingPrompt');
         localStorage.removeItem('pendingMode');
@@ -237,7 +244,6 @@ export default function MasoMindApp() {
           {!isMiniPay && !isConnected ? (
              <button 
                onClick={() => {
-                 // Contextual Routing: Connect with extension if available, fallback to WalletConnect if not
                  const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
                  const targetConnector = hasInjectedWallet 
                    ? connectors.find(c => c.id === 'injected') 
@@ -245,8 +251,6 @@ export default function MasoMindApp() {
                  
                  if (targetConnector) {
                    connect({ connector: targetConnector });
-                 } else {
-                   console.error("No valid connector found!");
                  }
                }} 
                className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all border border-zinc-800"
@@ -255,7 +259,6 @@ export default function MasoMindApp() {
              </button>
           ) : (
             <div className="relative">
-              {/* The Custom Dropdown Trigger */}
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300 rounded-full px-3 py-1.5 focus:border-emerald-500 transition-all shadow-lg shadow-black/50 hover:bg-zinc-800"
@@ -265,7 +268,6 @@ export default function MasoMindApp() {
                 <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Invisible overlay to close dropdown when clicking outside */}
               {isDropdownOpen && (
                 <div 
                   className="fixed inset-0 z-40" 
@@ -273,7 +275,6 @@ export default function MasoMindApp() {
                 />
               )}
 
-              {/* The Custom Dropdown Menu */}
               {isDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-50 glass-panel">
                   {Object.keys(TOKENS).map((token) => (
@@ -295,39 +296,75 @@ export default function MasoMindApp() {
           )}
         </div>
 
-        <div className="flex p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
+        <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
           <button 
             onClick={() => { setMode('IMAGE'); setResultData(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
-            <ImageIcon className="w-4 h-4" /> Gen Asset
+            <ImageIcon className="w-4 h-4" /> Image
           </button>
           <button 
             onClick={() => { setMode('AUDIT'); setResultData(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
-            <Code className="w-4 h-4" /> Audit Code
+            <Code className="w-4 h-4" /> Audit
+          </button>
+          <button 
+            onClick={() => { setMode('MUSIC'); setResultData(null); }}
+            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            <Music className="w-4 h-4" /> Music
+          </button>
+          <button 
+            onClick={() => { setMode('VIDEO'); setResultData(null); }}
+            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            <Video className="w-4 h-4" /> Video
           </button>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
         {resultData ? (
-          mode === 'IMAGE' ? (
-            <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square group">
-              <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
-              <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px] relative z-10" />
-              <button onClick={downloadImage} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
-                <Download className="w-5 h-5 text-white" />
-              </button>
-            </div>
-          ) : (
-            <div className="w-full h-[400px] rounded-3xl glass-panel border border-zinc-800/50 p-6 shadow-2xl relative overflow-y-auto custom-scrollbar bg-zinc-950/80">
-              <div className="prose prose-invert prose-emerald text-sm whitespace-pre-wrap font-mono leading-relaxed">
-                {resultData}
+          <>
+            {mode === 'IMAGE' && (
+              <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square group">
+                <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
+                <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px] relative z-10" />
+                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
+                  <Download className="w-5 h-5 text-white" />
+                </button>
               </div>
-            </div>
-          )
+            )}
+            {mode === 'AUDIT' && (
+              <div className="w-full h-[400px] rounded-3xl glass-panel border border-zinc-800/50 p-6 shadow-2xl relative overflow-y-auto custom-scrollbar bg-zinc-950/80">
+                <div className="prose prose-invert prose-emerald text-sm whitespace-pre-wrap font-mono leading-relaxed">
+                  {resultData}
+                </div>
+              </div>
+            )}
+            {mode === 'MUSIC' && (
+              <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 shadow-2xl bg-gradient-to-b from-zinc-900 to-zinc-950">
+                <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                  <Music className="w-12 h-12 text-emerald-400" />
+                </div>
+                <audio controls className="w-full" src={resultData}>
+                  Your browser does not support the audio element.
+                </audio>
+                <button onClick={downloadAsset} className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl text-xs font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" /> Download 30s Track
+                </button>
+              </div>
+            )}
+            {mode === 'VIDEO' && (
+              <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video group overflow-hidden">
+                <video controls autoPlay className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
+                <button onClick={downloadAsset} className="absolute top-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
+                  <Download className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full aspect-square rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
@@ -342,14 +379,25 @@ export default function MasoMindApp() {
             ) : (
               <div className="relative z-10 flex flex-col items-center">
                 <div className="p-5 bg-zinc-900 rounded-2xl border border-zinc-800 mb-4 shadow-inner">
-                  {mode === 'IMAGE' ? <ImageIcon className="w-10 h-10 text-zinc-600" /> : <Code className="w-10 h-10 text-zinc-600" />}
+                  {mode === 'IMAGE' && <ImageIcon className="w-10 h-10 text-zinc-600" />}
+                  {mode === 'AUDIT' && <Code className="w-10 h-10 text-zinc-600" />}
+                  {mode === 'MUSIC' && <Music className="w-10 h-10 text-zinc-600" />}
+                  {mode === 'VIDEO' && <Video className="w-10 h-10 text-zinc-600" />}
                 </div>
-                <h3 className="text-zinc-300 font-medium mb-1">{mode === 'IMAGE' ? 'Awaiting Prompt' : 'Paste Smart Contract'}</h3>
-                <p className="text-xs text-zinc-600 max-w-[200px]">
-                  {mode === 'IMAGE' ? 'Enter an intent below to generate high-fidelity assets.' : 'Upload code for an AI security audit.'}
+                <h3 className="text-zinc-300 font-medium mb-1">
+                  {mode === 'IMAGE' && 'Generate Asset'}
+                  {mode === 'AUDIT' && 'Smart Contract Audit'}
+                  {mode === 'MUSIC' && 'AI Music Studio'}
+                  {mode === 'VIDEO' && 'AI Video Engine'}
+                </h3>
+                <p className="text-xs text-zinc-600 max-w-[240px]">
+                  {mode === 'IMAGE' && 'Enter an intent below to generate high-fidelity assets.'}
+                  {mode === 'AUDIT' && 'Upload Solidity code for an AI security and gas audit.'}
+                  {mode === 'MUSIC' && 'Describe the genre, tempo, and mood for a GameFi audio track.'}
+                  {mode === 'VIDEO' && 'Describe a scene or provide a script for video generation.'}
                 </p>
                 <span className="mt-4 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">
-                  Cost: {mode === 'IMAGE' ? '0.10' : '0.05'} {activeToken}
+                  Cost: {mode === 'IMAGE' ? '0.10' : mode === 'MUSIC' ? '0.50' : mode === 'VIDEO' ? '1.00' : '0.05'} {activeToken}
                 </span>
               </div>
             )}
@@ -359,21 +407,25 @@ export default function MasoMindApp() {
 
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
         <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1">
-          {mode === 'IMAGE' ? (
-            <input 
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Initialize intent..."
-              className="w-full pl-4 pr-28 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600"
-            />
-          ) : (
+          {mode === 'AUDIT' ? (
             <textarea 
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Paste contract code..."
               rows={2}
               className="w-full pl-4 pr-28 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none"
+            />
+          ) : (
+            <input 
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={
+                mode === 'IMAGE' ? "Initialize intent..." :
+                mode === 'MUSIC' ? "e.g., Upbeat cyberpunk synthwave..." :
+                "e.g., A neon cityscape cinematic pan..."
+              }
+              className="w-full pl-4 pr-28 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600"
             />
           )}
           <button 
