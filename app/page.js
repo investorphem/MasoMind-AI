@@ -6,6 +6,7 @@ import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
 import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, Wallet } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
+import Link from 'next/link';
 
 // Define the stablecoins on Celo Mainnet
 const TOKENS = {
@@ -23,7 +24,7 @@ export default function MasoMindApp() {
   const [mode, setMode] = useState('IMAGE'); // 'IMAGE' or 'AUDIT'
   const [activeToken, setActiveToken] = useState('cUSD');
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
-  
+
   const [prompt, setPrompt] = useState('');
   const [resultData, setResultData] = useState(null); 
   const [status, setStatus] = useState('');
@@ -37,7 +38,7 @@ export default function MasoMindApp() {
     const fetchBalances = async () => {
       const publicClient = createPublicClient({ chain: celo, transport: custom(window.ethereum) });
       const newBalances = { ...balances };
-      
+
       for (const tokenKey of Object.keys(TOKENS)) {
         const token = TOKENS[tokenKey];
         try {
@@ -74,7 +75,7 @@ export default function MasoMindApp() {
             body: JSON.stringify({ prompt: savedPrompt, txHash: savedHash })
           });
           const data = await res.json();
-          
+
           if (data.imageUrl || data.report) {
             setResultData(data.imageUrl || data.report);
             setMode(savedMode);
@@ -119,7 +120,7 @@ export default function MasoMindApp() {
 
     setResultData(null);
     const token = TOKENS[activeToken];
-    
+
     // Configurable Pricing
     const priceStr = mode === 'IMAGE' ? '0.10' : '0.05';
     const amountToCharge = parseUnits(priceStr, token.decimals);
@@ -184,16 +185,16 @@ export default function MasoMindApp() {
 
       // STEP 5: Route to Correct API
       setStatus(`Processing AI ${mode === 'IMAGE' ? 'Asset' : 'Audit'}...`);
-      
+
       const endpoint = mode === 'IMAGE' ? '/api/generate-image' : '/api/audit-code';
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, txHash }) 
       });
-      
+
       const data = await res.json();
-      
+
       if (data.imageUrl || data.report) {
         setResultData(data.imageUrl || data.report);
         // Safely clear memory since it was successful
@@ -204,7 +205,7 @@ export default function MasoMindApp() {
          setStatus(data.error || 'API Processing Failed. App will auto-recover.');
          setTimeout(() => setStatus(''), 4000);
       }
-      
+
       setStatus('');
     } catch (err) {
       console.error(err);
@@ -223,7 +224,12 @@ export default function MasoMindApp() {
               <Sparkles className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h1 className="font-bold text-lg tracking-wider text-white">MASOMIND</h1>
+              <h1 className="font-bold text-lg tracking-wider text-white flex items-center gap-2">
+                MASOMIND
+                {isConnected && (
+                  <Link href="/dashboard" className="px-2 py-0.5 bg-zinc-800 rounded text-[10px] text-emerald-400 hover:bg-zinc-700 transition-colors border border-zinc-700">Ledger</Link>
+                )}
+              </h1>
               <p className="text-[10px] text-emerald-500/70 uppercase tracking-widest font-mono">Enterprise Suite</p>
             </div>
           </div>
