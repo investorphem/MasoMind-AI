@@ -51,6 +51,9 @@ export async function POST(req) {
       // If status is PENDING or FAILED, we allow the script to continue to retry the generation!
     }
 
+    // Variable to hold the user's wallet address from the blockchain receipt
+    let userAddress = '';
+
     // ==========================================
     // 2. BLOCKCHAIN VERIFICATION
     // ==========================================
@@ -62,6 +65,9 @@ export async function POST(req) {
       if (receipt.status !== 'success' || receipt.to.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
         return NextResponse.json({ error: "Invalid or failed transaction" }, { status: 403 });
       }
+
+      // Extract the sender's wallet address directly from the verified on-chain receipt
+      userAddress = receipt.from;
 
       // Fetch the raw transaction data to interrogate the payload
       const transaction = await publicClient.getTransaction({ hash: txHash });
@@ -104,7 +110,8 @@ export async function POST(req) {
         tx_hash: txHash,
         prompt: prompt,
         service_type: 'IMAGE',
-        status: 'PENDING'
+        status: 'PENDING',
+        user_address: userAddress.toLowerCase() // Now securely linked to the specific user's wallet
       }]);
     }
 
@@ -127,7 +134,7 @@ export async function POST(req) {
       await supabase.from('transactions')
         .update({ status: 'FAILED' })
         .eq('tx_hash', txHash);
-        
+
       throw aiError; // Trigger the main catch block
     }
 
