@@ -11,7 +11,7 @@ import Link from 'next/link';
 const TOKENS = {
   cUSD: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18, symbol: 'cUSD' },
   USDC: { address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', decimals: 6, symbol: 'USDC' },
-  USDT: { address: '0x48065fbBE25f71C9282ddf5e1cD6D6A88248a566', decimals: 6, symbol: 'USDT' }
+  USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6, symbol: 'USDT' }
 };
 
 export default function MasoMindApp() {
