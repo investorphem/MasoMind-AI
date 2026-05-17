@@ -3,7 +3,7 @@ import { createPublicClient, http, decodeFunctionData, parseUnits } from 'viem';
 import { celo } from 'viem/chains';
 
 // IMPORTANT: Replace this with your newly deployed V2 Contract Address!
-const CONTRACT_ADDRESS = 'YOUR_NEW_V2_CONTRACT_ADDRESS';
+const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 
 // Strict token registry to verify the exact token decimals
 const TOKENS = {
