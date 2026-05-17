@@ -2,13 +2,14 @@
 import { useState } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { parseEther } from 'viem';
+import { createPublicClient, custom, parseEther, formatEther } from 'viem';
+import { celo } from 'viem/chains';
 import { Sparkles, Image as ImageIcon, Loader2, Fingerprint } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 
 export default function MasoMindApp() {
   const isMiniPay = useMiniPay();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount(); // Added address extraction
   const { connect } = useConnect();
   const { writeContractAsync, isPending } = useWriteContract();
   
@@ -16,31 +17,63 @@ export default function MasoMindApp() {
   const [generatedImage, setGeneratedImage] = useState(null);
   const [status, setStatus] = useState('');
 
-  // Your actual live deployed contract
   const CONTRACT_ADDRESS = '0xa96853decf20e65c7b657722815c515074c4ced0';
-  // Official Celo Mainnet cUSD Address
   const CUSD_ADDRESS = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
   const triggerGeneration = async () => {
-    if (!prompt) return;
-    
+    if (!prompt || !address) return;
+
     try {
-      // STEP 1: Approve the cUSD Transfer
-      setStatus('Step 1: Approving 0.10 cUSD...');
-      await writeContractAsync({
-        address: CUSD_ADDRESS,
-        abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]}],
-        functionName: 'approve',
-        args: [CONTRACT_ADDRESS, parseEther('0.10')],
+      // Initialize Viem Client to read the blockchain
+      const publicClient = createPublicClient({
+        chain: celo,
+        transport: custom(window.ethereum)
       });
 
-      // Wait a few seconds for the Celo blockchain to register the approval
-      setStatus('Blockchain syncing... please wait 4 seconds.');
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      // 1. PRE-FLIGHT BALANCE CHECK
+      setStatus('Checking wallet balance...');
+      const balance = await publicClient.readContract({
+        address: CUSD_ADDRESS,
+        abi: [{"name":"balanceOf","type":"function","stateMutability":"view","inputs":[{"name":"account","type":"address"}],"outputs":[{"name":"","type":"uint256"}]}],
+        functionName: 'balanceOf',
+        args: [address],
+      });
 
-      // STEP 2: Execute the Payment and Prompt
-      setStatus('Step 2: Confirming Payment...');
-      await writeContractAsync({
+      if (balance < parseEther('0.10')) {
+        const readableBalance = Number(formatEther(balance)).toFixed(2);
+        setStatus(`Low Balance Alert: You only have ${readableBalance} cUSD.`);
+        setTimeout(() => setStatus(''), 5000);
+        return; // Stops the transaction completely
+      }
+
+      // 2. SMART ALLOWANCE CHECK
+      setStatus('Checking contract permissions...');
+      const allowance = await publicClient.readContract({
+        address: CUSD_ADDRESS,
+        abi: [{"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]}],
+        functionName: 'allowance',
+        args: [address, CONTRACT_ADDRESS],
+      });
+
+      // If allowance is less than 0.10 cUSD, ask for approval
+      if (allowance < parseEther('0.10')) {
+        setStatus('Step 1: Approving cUSD limit...');
+        // We approve 10 cUSD so you don't have to do this step again for the next 100 images!
+        const approveHash = await writeContractAsync({
+          address: CUSD_ADDRESS,
+          abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]}],
+          functionName: 'approve',
+          args: [CONTRACT_ADDRESS, parseEther('10.0')],
+        });
+
+        setStatus('Waiting for blockchain confirmation...');
+        // This actively listens for the exact moment the block is verified
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
+      // 3. EXECUTE PAYMENT
+      setStatus('Step 2: Executing 0.10 cUSD Payment...');
+      const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: [{
           "name": "requestImage",
@@ -52,8 +85,11 @@ export default function MasoMindApp() {
         args: [prompt],
       });
 
-      // STEP 3: Generate the Image
-      setStatus('Processing AI Asset...');
+      setStatus('Confirming payment on chain...');
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      // 4. GENERATE AI IMAGE
+      setStatus('Processing AI Asset via Gemini...');
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,13 +102,13 @@ export default function MasoMindApp() {
         setGeneratedImage(data.imageUrl);
         setStatus('');
       } else {
-        setStatus('Generation failed. Please retry.');
-        setTimeout(() => setStatus(''), 3000);
+        setStatus('AI Generation failed. Please retry.');
+        setTimeout(() => setStatus(''), 4000);
       }
     } catch (err) {
       console.error(err);
-      setStatus('Transaction canceled or failed. Try again.');
-      setTimeout(() => setStatus(''), 3000);
+      setStatus('Transaction rejected or failed.');
+      setTimeout(() => setStatus(''), 4000);
     }
   };
 
