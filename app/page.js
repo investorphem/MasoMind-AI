@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, Wallet } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, Wallet, ChevronDown } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 
@@ -23,6 +23,7 @@ export default function MasoMindApp() {
   const [mode, setMode] = useState('IMAGE'); // 'IMAGE' or 'AUDIT'
   const [activeToken, setActiveToken] = useState('cUSD');
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Controls the custom token dropdown
 
   const [prompt, setPrompt] = useState('');
   const [resultData, setResultData] = useState(null); 
@@ -253,16 +254,43 @@ export default function MasoMindApp() {
                <Fingerprint className="w-3 h-3 text-emerald-400" /> Connect Wallet
              </button>
           ) : (
-            <div className="flex items-center gap-2 shadow-lg shadow-black/50 rounded-full">
-              <select 
-                value={activeToken} 
-                onChange={(e) => setActiveToken(e.target.value)}
-                className="bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300 rounded-full px-3 py-2 outline-none focus:border-emerald-500 glass-panel"
+            <div className="relative">
+              {/* The Custom Dropdown Trigger */}
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300 rounded-full px-3 py-1.5 focus:border-emerald-500 transition-all shadow-lg shadow-black/50 hover:bg-zinc-800"
               >
-                <option value="cUSD">cUSD ({balances.cUSD})</option>
-                <option value="USDC">USDC ({balances.USDC})</option>
-                <option value="USDT">USDT ({balances.USDT})</option>
-              </select>
+                <span className="font-mono font-bold">{activeToken}</span>
+                <span className="text-emerald-500/70 font-mono">({balances[activeToken]})</span>
+                <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Invisible overlay to close dropdown when clicking outside */}
+              {isDropdownOpen && (
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsDropdownOpen(false)}
+                />
+              )}
+
+              {/* The Custom Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-40 bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-50 glass-panel">
+                  {Object.keys(TOKENS).map((token) => (
+                    <button
+                      key={token}
+                      onClick={() => {
+                        setActiveToken(token);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-xs hover:bg-zinc-800/80 transition-colors ${activeToken === token ? 'bg-zinc-800/50 border-l-2 border-emerald-500' : 'border-l-2 border-transparent'}`}
+                    >
+                      <span className={`font-mono font-bold ${activeToken === token ? 'text-emerald-400' : 'text-zinc-300'}`}>{token}</span>
+                      <span className="text-zinc-500 font-mono">{balances[token]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
