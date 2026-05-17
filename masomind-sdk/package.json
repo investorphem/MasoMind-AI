@@ -1,0 +1,22 @@
+{
+  "name": "masomind-sdk",
+  "version": "1.0.0",
+  "description": "The official Web3 AI SDK for Masonode Technologies. Generate assets and audit smart contracts seamlessly on Celo.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "web3",
+    "ai",
+    "celo",
+    "smart-contracts",
+    "masonode"
+  ],
+  "author": "Oluwafemi Mobolaji Olagoke",
+  "license": "MIT",
+  "dependencies": {
+    "viem": "^2.0.0"
+  }
+}
