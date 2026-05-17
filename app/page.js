@@ -31,10 +31,6 @@ export default function MasoMindApp() {
   // IMPORTANT: Replace this with your newly deployed V2 Contract Address from Remix
   const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
 
-  // Find your specific connectors from the Wagmi pool
-  const injectedConnector = connectors.find(c => c.id === 'injected');
-  const walletConnectConnector = connectors.find(c => c.id === 'walletConnect');
-
   // 1. Fetch balances for all three tokens when wallet connects
   useEffect(() => {
     if (!address) return;
@@ -238,18 +234,24 @@ export default function MasoMindApp() {
           </div>
 
           {!isMiniPay && !isConnected ? (
-             <div className="flex items-center gap-1.5">
-               {injectedConnector && (
-                 <button onClick={() => connect({ connector: injectedConnector })} className="flex items-center gap-1.5 glass-panel hover:bg-zinc-800 text-white px-3 py-1.5 rounded-full text-[11px] font-medium transition-all">
-                   <Fingerprint className="w-3 h-3 text-emerald-400" /> Extension
-                 </button>
-               )}
-               {walletConnectConnector && (
-                 <button onClick={() => connect({ connector: walletConnectConnector })} className="flex items-center gap-1.5 glass-panel hover:bg-zinc-800 text-white px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border border-emerald-500/10 bg-emerald-500/5">
-                   <Wallet className="w-3 h-3 text-emerald-400" /> Mobile Wallet
-                 </button>
-               )}
-             </div>
+             <button 
+               onClick={() => {
+                 // Contextual Routing: Connect with extension if available, fallback to WalletConnect if not
+                 const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
+                 const targetConnector = hasInjectedWallet 
+                   ? connectors.find(c => c.id === 'injected') 
+                   : connectors.find(c => c.id === 'walletConnect');
+                 
+                 if (targetConnector) {
+                   connect({ connector: targetConnector });
+                 } else {
+                   console.error("No valid connector found!");
+                 }
+               }} 
+               className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all border border-zinc-800"
+             >
+               <Fingerprint className="w-3 h-3 text-emerald-400" /> Connect Wallet
+             </button>
           ) : (
             <div className="flex items-center gap-2 shadow-lg shadow-black/50 rounded-full">
               <select 
