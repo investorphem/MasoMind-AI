@@ -16,7 +16,7 @@ export default function MasoMindApp() {
   const [generatedImage, setGeneratedImage] = useState(null);
   const [status, setStatus] = useState('');
 
-  const CONTRACT_ADDRESS = 'YOUR_DEPLOYED_CONTRACT_ADDRESS';
+  const CONTRACT_ADDRESS = '0xa96853decf20e65c7b657722815c515074c4ced0';
 
   const triggerGeneration = async () => {
     if (!prompt) return;
