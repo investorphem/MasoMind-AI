@@ -86,7 +86,7 @@ export default function MasoMindApp() {
     try {
       let blob;
       let extension;
-      
+
       if (mode === 'AUDIT') {
         // Create a text/markdown blob for the audit
         blob = new Blob([resultData], { type: 'text/markdown' });
@@ -104,7 +104,7 @@ export default function MasoMindApp() {
       const a = document.createElement("a");
       a.href = blobUrl;
       a.download = `MasoMind-${mode}-${Date.now()}.${extension}`;
-      
+
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -322,11 +322,11 @@ export default function MasoMindApp() {
                 </button>
               </div>
             )}
-            
+
             {/* NEW ENTERPRISE AUDIT UI */}
             {mode === 'AUDIT' && (
               <div className="w-full flex flex-col h-[450px] rounded-3xl glass-panel border border-zinc-800/50 shadow-2xl relative overflow-hidden bg-zinc-950/90">
-                
+
                 {/* Fixed Top Action Bar */}
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
                   <div className="flex items-center gap-2">
@@ -477,6 +477,17 @@ export default function MasoMindApp() {
           >
             {pendingState ? 'Retry API' : 'Execute'}
           </button>
+        </div>
+        
+        {/* Company Signature & Info Link */}
+        <div className="mt-6 flex flex-col items-center justify-center space-y-2">
+          <Link href="/info" className="text-[10px] text-zinc-500 hover:text-emerald-400 transition-colors underline underline-offset-2">
+            FAQ, Docs, Privacy & Terms
+          </Link>
+          <div className="flex items-center gap-1 opacity-60">
+            <span className="text-[9px] text-zinc-600 font-mono">Engineered by</span>
+            <span className="text-[9px] font-bold text-emerald-500 tracking-widest uppercase">Masonode Technologies Ltd.</span>
+          </div>
         </div>
       </footer>
     </div>
