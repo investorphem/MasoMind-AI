@@ -123,7 +123,11 @@ export async function POST(req) {
       const apiKey = process.env.GEMINI_API_KEY;
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-      const promptText = `You are an expert Web3 Smart Contract Auditor. Analyze the following code for vulnerabilities, reentrancy risks, gas optimizations, and syntax errors. Provide a concise, highly professional markdown report. Code:\n\n${prompt}`;
+      // Grab the exact current date dynamically
+      const currentDate = new Date().toISOString().split('T')[0];
+
+      // Inject the dynamic date into the hidden system prompt
+      const promptText = `You are an expert Web3 Smart Contract Auditor. Today's date is ${currentDate}. Analyze the following code for vulnerabilities, reentrancy risks, gas optimizations, and syntax errors. Provide a concise, highly professional markdown report ensuring the Audit Date matches today's date perfectly. Code:\n\n${prompt}`;
 
       const response = await fetch(url, {
         method: 'POST',
