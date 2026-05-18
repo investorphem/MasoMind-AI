@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
 import { 
   ArrowLeft, History, ExternalLink, Image as ImageIcon, 
@@ -12,7 +11,7 @@ export default function Dashboard() {
   const { isConnected, address } = useAccount();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTx, setSelectedTx] = useState(null); // Holds the transaction for the modal
+  const [selectedTx, setSelectedTx] = useState(null); 
 
   useEffect(() => {
     if (!address) {
@@ -22,14 +21,13 @@ export default function Dashboard() {
 
     const fetchLedger = async () => {
       try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_address', address.toLowerCase())
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setTransactions(data || []);
+        // Securely fetch through your backend API instead of client-side Supabase
+        const res = await fetch(`/api/get-transactions?address=${address}`);
+        const data = await res.json();
+        
+        if (data.transactions) {
+          setTransactions(data.transactions);
+        }
       } catch (err) {
         console.error('Error fetching ledger:', err);
       } finally {
@@ -40,7 +38,6 @@ export default function Dashboard() {
     fetchLedger();
   }, [address]);
 
-  // Format the transaction hash for clean mobile display
   const truncateHash = (hash) => {
     if (!hash) return '';
     return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`;
@@ -102,7 +99,6 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
       
-      {/* Header */}
       <header className="flex items-center justify-between py-4 mb-4 border-b border-white/5 pb-4">
         <Link href="/" className="flex items-center gap-2 p-2 bg-zinc-900/80 rounded-full border border-zinc-800 hover:bg-zinc-800 transition-colors">
           <ArrowLeft className="w-4 h-4 text-emerald-400" />
@@ -113,7 +109,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Ledger List */}
       <main className="flex-1 w-full max-w-md mx-auto relative">
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -129,7 +124,7 @@ export default function Dashboard() {
           <div className="space-y-3 pb-20">
             {transactions.map((tx) => (
               <div 
-                key={tx.id} 
+                key={tx.id || tx.tx_hash} 
                 onClick={() => { if (tx.status === 'COMPLETED' && tx.result_data) setSelectedTx(tx); }}
                 className={`glass-panel p-4 rounded-2xl border border-zinc-800/80 flex items-center gap-4 transition-all ${tx.status === 'COMPLETED' && tx.result_data ? 'cursor-pointer hover:bg-zinc-800/50 hover:border-emerald-500/50 shadow-lg' : 'opacity-70'}`}
               >
@@ -139,7 +134,9 @@ export default function Dashboard() {
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] text-zinc-500 font-mono">{new Date(tx.created_at).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'Unknown Date'}
+                    </span>
                     <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold tracking-wider ${tx.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : tx.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
                       {tx.status}
                     </span>
@@ -155,7 +152,6 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Asset Viewer Modal */}
       {selectedTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="glass-panel w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl border border-zinc-700 shadow-2xl overflow-hidden relative bg-zinc-950/90">
@@ -208,7 +204,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
