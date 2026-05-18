@@ -4,7 +4,7 @@ import { useAccount } from 'wagmi';
 import Link from 'next/link';
 import { 
   ArrowLeft, History, ExternalLink, Image as ImageIcon, 
-  Code, Music, Video, XCircle, Download, Loader2, Share2 
+  Code, Music, Video, XCircle, Download, Loader2 
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -24,7 +24,7 @@ export default function Dashboard() {
         // Securely fetch through your backend API instead of client-side Supabase
         const res = await fetch(`/api/get-transactions?address=${address}`);
         const data = await res.json();
-        
+
         if (data.transactions) {
           setTransactions(data.transactions);
         }
@@ -53,30 +53,31 @@ export default function Dashboard() {
     }
   };
 
+  // FORCED BLOB DOWNLOAD (Saves directly to device storage)
   const downloadAsset = async (tx) => {
     if (!tx.result_data || tx.service_type === 'AUDIT') return;
-    
+
     try {
-      if (navigator.share && tx.service_type === 'IMAGE') {
-        await navigator.share({
-          title: 'MasoMind Asset',
-          text: `Prompt: ${tx.prompt}`,
-          url: tx.result_data
-        });
-      } else {
-        if (tx.service_type === 'IMAGE') {
-           window.open(tx.result_data, '_blank');
-        } else {
-           const a = document.createElement("a");
-           a.href = tx.result_data;
-           a.download = `MasoMind-${tx.service_type}-${Date.now()}.${tx.service_type === 'MUSIC' ? 'mp3' : 'mp4'}`;
-           document.body.appendChild(a);
-           a.click();
-           document.body.removeChild(a);
-        }
-      }
+      const response = await fetch(tx.result_data);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+
+      let extension = 'jpg';
+      if (tx.service_type === 'MUSIC') extension = 'mp3';
+      if (tx.service_type === 'VIDEO') extension = 'mp4';
+
+      a.download = `MasoMind-${tx.service_type}-${Date.now()}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error("Share failed:", err);
+      console.error("Blob download failed, opening in new tab:", err);
+      // Fallback: open directly in a new tab if strictly blocked
       window.open(tx.result_data, '_blank');
     }
   };
@@ -98,7 +99,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
-      
+
       <header className="flex items-center justify-between py-4 mb-4 border-b border-white/5 pb-4">
         <Link href="/" className="flex items-center gap-2 p-2 bg-zinc-900/80 rounded-full border border-zinc-800 hover:bg-zinc-800 transition-colors">
           <ArrowLeft className="w-4 h-4 text-emerald-400" />
@@ -131,7 +132,7 @@ export default function Dashboard() {
                 <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800/80 shadow-inner">
                   {getServiceIcon(tx.service_type)}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[10px] text-zinc-500 font-mono">
@@ -155,7 +156,7 @@ export default function Dashboard() {
       {selectedTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="glass-panel w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl border border-zinc-700 shadow-2xl overflow-hidden relative bg-zinc-950/90">
-            
+
             <div className="flex justify-between items-center p-4 border-b border-zinc-800 bg-zinc-900/50">
               <div className="flex items-center gap-2">
                 {getServiceIcon(selectedTx.service_type)}
@@ -195,12 +196,12 @@ export default function Dashboard() {
                   onClick={() => downloadAsset(selectedTx)}
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2"
                 >
-                  {selectedTx.service_type === 'IMAGE' ? <Share2 className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                  {selectedTx.service_type === 'IMAGE' ? 'Share / Save Asset' : 'Download Media'}
+                  <Download className="w-4 h-4" />
+                  Download Media
                 </button>
               )}
             </div>
-            
+
           </div>
         </div>
       )}
