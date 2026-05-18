@@ -1,0 +1,23 @@
+{
+  "name": "MasoMind Enterprise Agent",
+  "description": "An autonomous, multi-modal DeAI agent providing on-chain smart contract auditing and high-fidelity media rendering via stablecoin payments.",
+  "version": "1.0.0",
+  "capabilities": [
+    "solidity-auditing",
+    "text-to-image",
+    "text-to-music",
+    "text-to-video"
+  ],
+  "endpoints": {
+    "http": "https://masomind-sage.vercel.app",
+    "mcp": null
+  },
+  "trustModels": [
+    "Self Agent ID",
+    "On-chain Reputation"
+  ],
+  "wallet": "0x4f9B9C40345258684cfe23F02FDb2B88F1d2eA62",
+  "authors": [
+    "Masonode Technologies Limited"
+  ]
+}
