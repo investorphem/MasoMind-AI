@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2 } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 
@@ -21,14 +21,14 @@ export default function MasoMindApp() {
   const { writeContractAsync, isPending } = useWriteContract();
 
   const [mode, setMode] = useState('IMAGE'); 
-  const [activeToken, setActiveToken] = useState('cUSD');
+  const [activeToken, setActiveToken] = useState('USDT'); // USDT is now the initial default
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); 
 
   const [prompt, setPrompt] = useState('');
   const [resultData, setResultData] = useState(null); 
   const [status, setStatus] = useState('');
-  
+
   const [pendingState, setPendingState] = useState(null);
 
   const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
@@ -70,34 +70,31 @@ export default function MasoMindApp() {
     }
   }, []);
 
-  // THE NATIVE MOBILE DOWNLOAD FIX
+  // FORCED BLOB DOWNLOAD (Saves directly to device storage)
   const downloadAsset = async () => {
     if (!resultData || mode === 'AUDIT') return;
-    
+
     try {
-      // Use the phone's native sharing/save menu if available (Highly reliable on mobile)
-      if (navigator.share && mode === 'IMAGE') {
-        await navigator.share({
-          title: 'MasoMind Asset',
-          text: 'Generated on MasoMind AI',
-          url: resultData
-        });
-      } else {
-        // Fallback for Desktop or Base64 Media (Music/Video)
-        if (mode === 'IMAGE') {
-           window.open(resultData, '_blank');
-        } else {
-           const a = document.createElement("a");
-           a.href = resultData;
-           a.download = `MasoMind-Asset-${Date.now()}.${mode === 'MUSIC' ? 'mp3' : 'mp4'}`;
-           document.body.appendChild(a);
-           a.click();
-           document.body.removeChild(a);
-        }
-      }
+      const response = await fetch(resultData);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      
+      let extension = 'jpg';
+      if (mode === 'MUSIC') extension = 'mp3';
+      if (mode === 'VIDEO') extension = 'mp4';
+      
+      a.download = `MasoMind-Asset-${Date.now()}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error("Native share failed, falling back to new tab:", err);
-      // Ultimate fallback: just open it!
+      console.error("Blob download failed, opening in new tab:", err);
+      // Ultimate fallback: open directly in a new tab if strictly blocked
       window.open(resultData, '_blank');
     }
   };
@@ -150,7 +147,7 @@ export default function MasoMindApp() {
     if (mode === 'IMAGE') priceStr = '0.10';
     if (mode === 'MUSIC') priceStr = '0.50';
     if (mode === 'VIDEO') priceStr = '1.00';
-    
+
     const amountToCharge = parseUnits(priceStr, token.decimals);
 
     try {
@@ -252,7 +249,7 @@ export default function MasoMindApp() {
                  const targetConnector = hasInjectedWallet 
                    ? connectors.find(c => c.id === 'injected') 
                    : connectors.find(c => c.id === 'walletConnect');
-                 
+
                  if (targetConnector) connect({ connector: targetConnector });
                }} 
                className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all border border-zinc-800"
@@ -304,7 +301,7 @@ export default function MasoMindApp() {
                 <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
                 <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px] relative z-10" />
                 <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
-                  <Share2 className="w-5 h-5 text-white" />
+                  <Download className="w-5 h-5 text-white" />
                 </button>
               </div>
             )}
