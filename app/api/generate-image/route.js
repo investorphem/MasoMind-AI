@@ -116,11 +116,13 @@ export async function POST(req) {
     }
 
     // ==========================================
-    // 4. GENERATE AI ASSET
+    // 4. GENERATE AI ASSET (PREMIUM HD ENHANCED)
     // ==========================================
     try {
       const randomSeed = Math.floor(Math.random() * 1000000);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${randomSeed}`;
+      
+      // UPGRADE: 1024x1024 HD Resolution, forced 'flux' model, and enhanced prompting
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux&enhance=true&seed=${randomSeed}`;
 
       // Mark as COMPLETED in the vault AND save the result payload
       await supabase.from('transactions')
