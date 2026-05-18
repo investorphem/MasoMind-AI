@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 
 // Define the stablecoins on Celo Mainnet
 const TOKENS = {
@@ -21,13 +22,14 @@ export default function MasoMindApp() {
   const { writeContractAsync, isPending } = useWriteContract();
 
   const [mode, setMode] = useState('IMAGE'); 
-  const [activeToken, setActiveToken] = useState('USDT'); // USDT is now the initial default
+  const [activeToken, setActiveToken] = useState('USDT'); 
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); 
 
   const [prompt, setPrompt] = useState('');
   const [resultData, setResultData] = useState(null); 
   const [status, setStatus] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const [pendingState, setPendingState] = useState(null);
 
@@ -70,32 +72,47 @@ export default function MasoMindApp() {
     }
   }, []);
 
-  // FORCED BLOB DOWNLOAD (Saves directly to device storage)
+  const copyToClipboard = () => {
+    if (!resultData) return;
+    navigator.clipboard.writeText(resultData);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // FORCED BLOB DOWNLOAD (Handles Media & Markdown Audits)
   const downloadAsset = async () => {
-    if (!resultData || mode === 'AUDIT') return;
+    if (!resultData) return;
 
     try {
-      const response = await fetch(resultData);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+      let blob;
+      let extension;
       
+      if (mode === 'AUDIT') {
+        // Create a text/markdown blob for the audit
+        blob = new Blob([resultData], { type: 'text/markdown' });
+        extension = 'md';
+      } else {
+        // Fetch media blob
+        const response = await fetch(resultData);
+        blob = await response.blob();
+        extension = 'jpg';
+        if (mode === 'MUSIC') extension = 'mp3';
+        if (mode === 'VIDEO') extension = 'mp4';
+      }
+
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
+      a.download = `MasoMind-${mode}-${Date.now()}.${extension}`;
       
-      let extension = 'jpg';
-      if (mode === 'MUSIC') extension = 'mp3';
-      if (mode === 'VIDEO') extension = 'mp4';
-      
-      a.download = `MasoMind-Asset-${Date.now()}.${extension}`;
       document.body.appendChild(a);
       a.click();
-      
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error("Blob download failed, opening in new tab:", err);
-      // Ultimate fallback: open directly in a new tab if strictly blocked
-      window.open(resultData, '_blank');
+      console.error("Blob download failed:", err);
+      // Fallback
+      if (mode !== 'AUDIT') window.open(resultData, '_blank');
     }
   };
 
@@ -305,13 +322,46 @@ export default function MasoMindApp() {
                 </button>
               </div>
             )}
+            
+            {/* NEW ENTERPRISE AUDIT UI */}
             {mode === 'AUDIT' && (
-              <div className="w-full h-[400px] rounded-3xl glass-panel border border-zinc-800/50 p-6 shadow-2xl relative overflow-y-auto custom-scrollbar bg-zinc-950/80">
-                <div className="prose prose-invert prose-emerald text-sm whitespace-pre-wrap font-mono leading-relaxed">
-                  {resultData}
+              <div className="w-full flex flex-col h-[450px] rounded-3xl glass-panel border border-zinc-800/50 shadow-2xl relative overflow-hidden bg-zinc-950/90">
+                
+                {/* Fixed Top Action Bar */}
+                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
+                  <div className="flex items-center gap-2">
+                    <Code className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h3 className="text-xs font-bold text-zinc-100 tracking-wider">SECURITY REPORT</h3>
+                      <p className="text-[9px] text-zinc-500 font-mono">Gemini 2.5 Flash</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={copyToClipboard} 
+                      className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors text-xs font-medium text-zinc-300"
+                    >
+                      {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button 
+                      onClick={downloadAsset} 
+                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors text-xs font-medium text-emerald-400"
+                    >
+                      <Download className="w-3.5 h-3.5" /> MD
+                    </button>
+                  </div>
+                </div>
+
+                {/* Rendered Markdown Area */}
+                <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                  <div className="prose prose-invert prose-emerald max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-headings:text-zinc-100 prose-a:text-emerald-400 prose-code:text-emerald-300 text-sm leading-relaxed">
+                    <ReactMarkdown>{resultData}</ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )}
+
             {mode === 'MUSIC' && (
               <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 shadow-2xl bg-gradient-to-b from-zinc-900 to-zinc-950">
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
