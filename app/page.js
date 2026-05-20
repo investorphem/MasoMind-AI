@@ -196,7 +196,7 @@ export default function MasoMindApp() {
     let endpoint = '/api/generate-image';
     if (targetMode === 'AUDIT') endpoint = '/api/audit-code';
     if (targetMode === 'MUSIC') endpoint = '/api/generate-music';
-    if (targetMode === 'VIDEO'] = '/api/generate-video';
+    if (targetMode === 'VIDEO') endpoint = '/api/generate-video';
 
     try {
       const res = await fetch(endpoint, {
