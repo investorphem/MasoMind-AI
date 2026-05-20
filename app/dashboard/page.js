@@ -80,50 +80,44 @@ export default function Dashboard() {
     }
   };
 
-  // 🚀 BULLETPROOF MINIPAY FIX: Absolutely No Blob URLs
+  // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
   const downloadAsset = async (tx) => {
     if (!tx.result_data) return;
     try {
-      // 1. Direct Links (Images): Open safely in a new tab where MiniPay allows saving natively
-      if (tx.service_type === 'IMAGE' && tx.result_data.startsWith('http')) {
-        window.open(tx.result_data, '_blank');
-        return;
-      }
-
-      // 2. Text (Audits): Use native text share
       if (tx.service_type === 'AUDIT') {
         if (navigator.share) {
           await navigator.share({ title: 'MasoMind Security Audit', text: tx.result_data });
         } else {
-          alert("Please use the 'Copy' button in the report viewer to save this audit.");
+          navigator.clipboard.writeText(tx.result_data);
+          alert("Audit copied to clipboard!");
         }
         return;
       }
 
-      // 3. Media (Audio/Video): Try native share file, otherwise instruct long-press
-      if (tx.service_type === 'MUSIC' || tx.service_type === 'VIDEO') {
-        try {
-          const response = await fetch(tx.result_data);
-          const rawBlob = await response.blob();
-          const extension = tx.service_type === 'MUSIC' ? 'mp3' : 'mp4';
-          const mimeType = tx.service_type === 'MUSIC' ? 'audio/mp3' : 'video/mp4';
-          const file = new File([rawBlob], `MasoMind-${tx.service_type}.${extension}`, { type: mimeType });
+      // Create a hidden form to submit the Base64/URL directly to the Next.js server
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/download';
 
-          // Try native iOS/Android share sheet first
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: `MasoMind ${tx.service_type}` });
-            return;
-          }
-        } catch (e) {
-          console.warn("Native share blocked or unavailable:", e);
-        }
-        
-        // ULTIMATE FALLBACK FOR MINIPAY: User Instruction
-        alert(`To save this ${tx.service_type.toLowerCase()}, please long-press the media player above and select "Save" or "Download".`);
-      }
+      const dataInput = document.createElement('input');
+      dataInput.type = 'hidden';
+      dataInput.name = 'fileData';
+      dataInput.value = tx.result_data;
+      form.appendChild(dataInput);
+
+      const typeInput = document.createElement('input');
+      typeInput.type = 'hidden';
+      typeInput.name = 'fileType';
+      typeInput.value = tx.service_type;
+      form.appendChild(typeInput);
+
+      document.body.appendChild(form);
+      form.submit(); // Forces native mobile download via server headers
+      document.body.removeChild(form);
+
     } catch (err) {
       console.error("Download action failed:", err);
-      alert("Browser restricted download. Please long-press the media to save it.");
+      alert("Failed to initiate download.");
     }
   };
 
@@ -279,7 +273,7 @@ export default function Dashboard() {
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  Download / Share
+                  Download to Device
                 </button>
               )}
             </div>
