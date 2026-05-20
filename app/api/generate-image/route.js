@@ -63,11 +63,16 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Log to DB
+    // 2. Log to DB (Included token_address for auto-refund compatibility)
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
-        tx_hash: txHash, prompt: prompt, service_type: 'IMAGE', status: 'PENDING', user_address: userAddress.toLowerCase()
+        tx_hash: txHash, 
+        prompt: prompt, 
+        service_type: 'IMAGE', 
+        status: 'PENDING', 
+        user_address: userAddress.toLowerCase(),
+        token_address: paidToken.toLowerCase() // 🚀 Mandatory for Auto-Refund
       }]);
     }
 
@@ -98,6 +103,7 @@ export async function POST(req) {
   } catch (error) {
     console.error("Image API Error:", error);
     await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
+    await sendTelegramNotification(`❌ *Image Generation Failed*`);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
