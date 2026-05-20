@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, History, ExternalLink, Image as ImageIcon, 
   Code, Music, Video, XCircle, Download, Loader2,
-  ChevronLeft, ChevronRight // Added for pagination UI
+  ChevronLeft, ChevronRight 
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -60,31 +60,44 @@ export default function Dashboard() {
     }
   };
 
-  // FORCED BLOB DOWNLOAD (Saves directly to device storage)
+  // 🚀 NATIVE MOBILE FIX APPLIED HERE
   const downloadAsset = async (tx) => {
     if (!tx.result_data || tx.service_type === 'AUDIT') return;
 
     try {
       const response = await fetch(tx.result_data);
       const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+      
+      let extension = 'jpg';
+      let mimeType = 'image/jpeg';
+      if (tx.service_type === 'MUSIC') { extension = 'mp3'; mimeType = 'audio/mp3'; }
+      if (tx.service_type === 'VIDEO') { extension = 'mp4'; mimeType = 'video/mp4'; }
 
+      const fileName = `MasoMind-${tx.service_type}-${Date.now()}.${extension}`;
+      const file = new File([blob], fileName, { type: mimeType });
+
+      // Try Web Share API first (Perfect for MiniPay & Mobile Browsers)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `MasoMind ${tx.service_type} Asset`,
+        });
+        return; // Stop here if native share succeeds
+      }
+
+      // FALLBACK: Standard Web Download (For Desktop Browsers)
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-
-      let extension = 'jpg';
-      if (tx.service_type === 'MUSIC') extension = 'mp3';
-      if (tx.service_type === 'VIDEO') extension = 'mp4';
-
-      a.download = `MasoMind-${tx.service_type}-${Date.now()}.${extension}`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
-
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
+
     } catch (err) {
       console.error("Blob download failed, opening in new tab:", err);
-      // Fallback: open directly in a new tab if strictly blocked
+      // LAST RESORT: Open directly in a new tab if strictly blocked
       window.open(tx.result_data, '_blank');
     }
   };
@@ -169,7 +182,7 @@ export default function Dashboard() {
             >
               <ChevronLeft className="w-4 h-4" /> Prev
             </button>
-            
+
             <span className="text-xs font-mono text-zinc-500">
               PAGE <span className="text-emerald-400">{currentPage}</span> OF {totalPages}
             </span>
