@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, History, ExternalLink, Image as ImageIcon, 
   Code, Music, Video, XCircle, Download, Loader2,
-  ChevronLeft, ChevronRight, AlertCircle, Clock // Added for Refund UI
+  ChevronLeft, ChevronRight, AlertCircle, Clock
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState(null); 
-  const [requesting, setRequesting] = useState(null); // Track refund loading state
+  const [requesting, setRequesting] = useState(null); 
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -44,7 +44,6 @@ export default function Dashboard() {
     fetchLedger();
   }, [address, currentPage]);
 
-  // 🚀 NEW: Secure database-synced Refund Trigger
   const handleRefund = async (tx) => {
     if (!address) return;
     setRequesting(tx.tx_hash);
@@ -56,7 +55,6 @@ export default function Dashboard() {
       });
       if (res.ok) {
         alert('Refund request submitted to Treasury.');
-        // Optimistically update the UI to show pending
         setTransactions(prev => prev.map(t => t.tx_hash === tx.tx_hash ? { ...t, status: 'REFUND_PENDING' } : t));
       } else {
         alert('Failed to request refund. It may have already been processed.');
@@ -82,41 +80,50 @@ export default function Dashboard() {
     }
   };
 
+  // 🚀 BULLETPROOF MINIPAY FIX: Absolutely No Blob URLs
   const downloadAsset = async (tx) => {
-    if (!tx.result_data || tx.service_type === 'AUDIT') return;
-
+    if (!tx.result_data) return;
     try {
-      const response = await fetch(tx.result_data);
-      const blob = await response.blob();
-      
-      let extension = 'jpg';
-      let mimeType = 'image/jpeg';
-      if (tx.service_type === 'MUSIC') { extension = 'mp3'; mimeType = 'audio/mp3'; }
-      if (tx.service_type === 'VIDEO') { extension = 'mp4'; mimeType = 'video/mp4'; }
-
-      const fileName = `MasoMind-${tx.service_type}-${Date.now()}.${extension}`;
-      const file = new File([blob], fileName, { type: mimeType });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `MasoMind ${tx.service_type} Asset`,
-        });
-        return; 
+      // 1. Direct Links (Images): Open safely in a new tab where MiniPay allows saving natively
+      if (tx.service_type === 'IMAGE' && tx.result_data.startsWith('http')) {
+        window.open(tx.result_data, '_blank');
+        return;
       }
 
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
+      // 2. Text (Audits): Use native text share
+      if (tx.service_type === 'AUDIT') {
+        if (navigator.share) {
+          await navigator.share({ title: 'MasoMind Security Audit', text: tx.result_data });
+        } else {
+          alert("Please use the 'Copy' button in the report viewer to save this audit.");
+        }
+        return;
+      }
 
+      // 3. Media (Audio/Video): Try native share file, otherwise instruct long-press
+      if (tx.service_type === 'MUSIC' || tx.service_type === 'VIDEO') {
+        try {
+          const response = await fetch(tx.result_data);
+          const rawBlob = await response.blob();
+          const extension = tx.service_type === 'MUSIC' ? 'mp3' : 'mp4';
+          const mimeType = tx.service_type === 'MUSIC' ? 'audio/mp3' : 'video/mp4';
+          const file = new File([rawBlob], `MasoMind-${tx.service_type}.${extension}`, { type: mimeType });
+
+          // Try native iOS/Android share sheet first
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `MasoMind ${tx.service_type}` });
+            return;
+          }
+        } catch (e) {
+          console.warn("Native share blocked or unavailable:", e);
+        }
+        
+        // ULTIMATE FALLBACK FOR MINIPAY: User Instruction
+        alert(`To save this ${tx.service_type.toLowerCase()}, please long-press the media player above and select "Save" or "Download".`);
+      }
     } catch (err) {
-      console.error("Blob download failed, opening in new tab:", err);
-      window.open(tx.result_data, '_blank');
+      console.error("Download action failed:", err);
+      alert("Browser restricted download. Please long-press the media to save it.");
     }
   };
 
@@ -181,13 +188,12 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <p className="text-xs text-zinc-300 font-medium truncate mb-1 pr-2">{tx.prompt}</p>
-                  
+
                   <div className="flex items-center justify-between mt-2">
                     <a href={`https://celoscan.io/tx/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-emerald-500/70 hover:text-emerald-400 transition-colors w-fit" onClick={(e) => e.stopPropagation()}>
                       {truncateHash(tx.tx_hash)} <ExternalLink className="w-2.5 h-2.5" />
                     </a>
-                    
-                    {/* 🚀 NEW: In-list Refund Button for FAILED TXs */}
+
                     {tx.status === 'FAILED' && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleRefund(tx); }}
@@ -273,7 +279,7 @@ export default function Dashboard() {
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  Download Media
+                  Download / Share
                 </button>
               )}
             </div>
