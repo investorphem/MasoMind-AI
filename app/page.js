@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -15,7 +15,6 @@ const TOKENS = {
   USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6, symbol: 'USDT' }
 };
 
-// Dynamic Prompt Examples for the Typewriter Effect
 const PLACEHOLDERS = {
   IMAGE: [
     "A neon cyberpunk cityscape at midnight...",
@@ -61,15 +60,12 @@ export default function MasoMindApp() {
 
   const [pendingState, setPendingState] = useState(null);
 
-  // Typewriter State Variables
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
   const [placeholderText, setPlaceholderText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // V2 Contract Address
   const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 
-  // Token Balance Fetching
   useEffect(() => {
     if (!address) return;
     const fetchBalances = async () => {
@@ -95,7 +91,6 @@ export default function MasoMindApp() {
     fetchBalances();
   }, [address]);
 
-  // Load Pending State
   useEffect(() => {
     const hash = localStorage.getItem('pendingTxHash');
     const savedPrompt = localStorage.getItem('pendingPrompt');
@@ -108,7 +103,6 @@ export default function MasoMindApp() {
     }
   }, []);
 
-  // Typewriter Effect Engine
   useEffect(() => {
     setCurrentPlaceholderIndex(0);
     setPlaceholderText('');
@@ -148,7 +142,6 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 🚀 NATIVE MOBILE FIX APPLIED HERE
   const downloadAsset = async () => {
     if (!resultData) return;
     try {
@@ -170,16 +163,14 @@ export default function MasoMindApp() {
       const fileName = `MasoMind-${mode}-${Date.now()}.${extension}`;
       const file = new File([blob], fileName, { type: mimeType });
 
-      // Try Web Share API first (Perfect for MiniPay & Mobile Browsers)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `MasoMind ${mode} Asset`,
         });
-        return; // Stop here if native share succeeds
+        return; 
       }
 
-      // FALLBACK: Standard Web Download (For Desktop Browsers)
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -191,7 +182,6 @@ export default function MasoMindApp() {
 
     } catch (err) {
       console.error("Download failed:", err);
-      // LAST RESORT: Open in new tab
       if (mode !== 'AUDIT') window.open(resultData, '_blank');
     }
   };
@@ -249,7 +239,6 @@ export default function MasoMindApp() {
     if (!prompt || !address) return;
     setResultData(null);
 
-    // Auto-Recovery Check
     if (pendingState) {
       await invokeAPI(pendingState.prompt, pendingState.hash, pendingState.mode);
       return;
@@ -284,7 +273,6 @@ export default function MasoMindApp() {
         setStatus(`Approving ${activeToken} limit...`);
         const approveAmount = parseUnits('10.0', token.decimals); 
 
-        // Standard ERC20 Approve ABI
         const approveHash = await writeContractAsync({
           address: token.address,
           abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"","type":"bool"}]}],
@@ -315,7 +303,6 @@ export default function MasoMindApp() {
       setStatus('Confirming transaction on chain...');
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      // Lock State into Vault
       localStorage.setItem('pendingTxHash', txHash);
       localStorage.setItem('pendingPrompt', prompt);
       localStorage.setItem('pendingMode', mode);
@@ -338,14 +325,34 @@ export default function MasoMindApp() {
     setPrompt('');
   };
 
+  // 🚀 NEW: Direct Refund Trigger from the Home Screen
+  const handleRefundFromHome = async () => {
+    if (!pendingState || !address) return;
+    setStatus('Requesting refund...');
+    try {
+      const res = await fetch('/api/trigger-refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txHash: pendingState.hash, userAddress: address })
+      });
+      if (res.ok) {
+        alert('Refund request submitted to Treasury. Check Ledger for status.');
+        clearPendingState(); // Clear the screen so they aren't stuck
+      } else {
+        alert('Failed to request refund. It may have already been processed.');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setStatus('');
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
 
       <header className="flex flex-col gap-4 py-4 px-2 mb-2 border-b border-white/5 pb-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-
-            {/* OFFICIAL MASONODE SVG LOGO */}
             <div className="flex items-center justify-center w-9 h-9 bg-emerald-500/10 rounded-lg border border-emerald-500/20 overflow-hidden text-emerald-400 p-1.5">
                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" className="w-full h-full">
                 <defs>
@@ -465,7 +472,6 @@ export default function MasoMindApp() {
               </div>
             )}
 
-            {/* NEW ENTERPRISE AUDIT UI */}
             {mode === 'AUDIT' && (
               <div className="w-full flex flex-col h-[450px] rounded-3xl glass-panel border border-zinc-800/50 shadow-2xl relative overflow-hidden bg-zinc-950/90">
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
@@ -542,8 +548,17 @@ export default function MasoMindApp() {
                   </div>
                   <h3 className="text-amber-400 font-bold mb-2 tracking-wide text-sm uppercase">Unfinished Generation</h3>
                   <p className="text-xs text-zinc-400 text-center mb-6 px-4">
-                    The payment processed, but AI failed to complete. Retry below without paying again.
+                    The payment processed, but AI failed to complete. Retry below without paying again, or request a refund.
                   </p>
+                  
+                  {/* 🚀 NEW: Immediate Refund Trigger UI */}
+                  <button 
+                    onClick={handleRefundFromHome}
+                    className="px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                  >
+                    <AlertCircle className="w-4 h-4" /> Request Refund
+                  </button>
+
                </div>
             ) : (
               <div className="relative z-10 flex flex-col items-center">
@@ -615,7 +630,6 @@ export default function MasoMindApp() {
           </button>
         </div>
 
-        {/* Enterprise Footer */}
         <div className="mt-8 mb-2 flex flex-col items-center justify-center space-y-3">
           <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-medium flex-wrap justify-center">
             <Link href="/info" className="hover:text-emerald-400 transition-colors">FAQ</Link>
@@ -626,7 +640,7 @@ export default function MasoMindApp() {
             <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
             <Link href="/info/terms" className="hover:text-emerald-400 transition-colors">Terms</Link>
             <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
-            <a href="https://t.me/MasoMind" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">Support</a>
+            <a href="https://t.me/your_telegram_group_here" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">Support</a>
           </div>
           <div className="opacity-60">
             <span className="text-[9px] font-mono font-bold text-zinc-500 tracking-widest uppercase">
