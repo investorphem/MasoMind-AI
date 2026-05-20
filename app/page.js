@@ -490,15 +490,18 @@ export default function MasoMindApp() {
             {pendingState ? 'Retry API' : 'Execute'}
           </button>
         </div>
-        
+
         {/* Enterprise Footer */}
         <div className="mt-8 mb-2 flex flex-col items-center justify-center space-y-3">
-          <div className="flex items-center gap-4 text-[10px] text-zinc-500 font-medium">
-            <Link href="/info" className="hover:text-emerald-400 transition-colors">FAQ & Docs</Link>
+          <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-medium flex-wrap justify-center">
+            <Link href="/info" className="hover:text-emerald-400 transition-colors">FAQ</Link>
             <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
-            <Link href="/info" className="hover:text-emerald-400 transition-colors">Privacy & Terms</Link>
+            <Link href="/info/docs" className="hover:text-emerald-400 transition-colors">Docs</Link>
             <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
-            {/* Telegram Support Link */}
+            <Link href="/info/privacy" className="hover:text-emerald-400 transition-colors">Privacy</Link>
+            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+            <Link href="/info/terms" className="hover:text-emerald-400 transition-colors">Terms</Link>
+            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
             <a href="https://t.me/your_telegram_group_here" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">Support</a>
           </div>
           <div className="opacity-60">
