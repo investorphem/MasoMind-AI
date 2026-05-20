@@ -60,7 +60,7 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Insert PENDING to DB (with token_address included)
+    // 2. Log to DB
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
@@ -69,7 +69,7 @@ export async function POST(req) {
         service_type: 'AUDIT', 
         status: 'PENDING', 
         user_address: userAddress.toLowerCase(),
-        token_address: paidToken.toLowerCase() // 🚀 CRITICAL FOR AUTO-REFUND
+        token_address: paidToken.toLowerCase()
       }]);
     }
 
@@ -84,15 +84,17 @@ export async function POST(req) {
     const aiData = await aiResponse.json();
     const auditReport = aiData.candidates[0].content.parts[0].text;
 
-    // 4. 🚀 AUTONOMOUS DELIVERY
+    // 4. 🚀 SMART DELIVERY (Avoid Reverts)
     const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
     const agentClient = createWalletClient({ account, chain: celo, transport: http() });
 
+    // Send only a summary to the blockchain to guarantee the transaction succeeds
+    const summary = `Audit Completed: ${prompt.substring(0, 20)}...`;
     const deliveryHash = await agentClient.writeContract({
       address: CONTRACT_ADDRESS,
       abi: DELIVERY_ABI,
       functionName: 'deliverResult',
-      args: [userAddress, auditReport]
+      args: [userAddress, summary]
     });
 
     // 5. Finalize DB
@@ -100,14 +102,13 @@ export async function POST(req) {
       .update({ status: 'COMPLETED', result_data: auditReport, tx_hash: deliveryHash })
       .eq('tx_hash', txHash);
 
-    await sendTelegramNotification(`✅ *Audit Delivered On-Chain*\nTx: \`${deliveryHash.substring(0, 10)}...\``);
+    await sendTelegramNotification(`✅ *Audit Completed*\nTx: \`${deliveryHash.substring(0, 10)}...\``);
 
     return NextResponse.json({ report: auditReport });
 
   } catch (error) {
     console.error("Audit API Error:", error);
-    await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
-    await sendTelegramNotification(`❌ *Audit Generation Failed*`);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    // Keep it as PENDING or handle via manual retry instead of forcing FAILED
+    return NextResponse.json({ error: "Generation failed, check logs" }, { status: 500 });
   }
 }
