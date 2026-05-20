@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createPublicClient, http, decodeFunctionData, parseUnits } from 'viem';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
+import { sendTelegramNotification } from '../../../lib/telegram'; // Import Telegram helper
 
 // Extend Vercel timeout for media generation
 export const maxDuration = 60; 
@@ -57,7 +58,7 @@ export async function POST(req) {
       // MUSIC requires 0.50 stablecoins
       const expectedAmount = parseUnits('0.50', decimals); 
       if (paidAmount < expectedAmount) return NextResponse.json({ error: "Insufficient payment" }, { status: 403 });
-      
+
       // Ensure serviceType matches
       if (paidServiceType !== 'MUSIC') return NextResponse.json({ error: "Invalid routing" }, { status: 403 });
 
@@ -104,10 +105,17 @@ export async function POST(req) {
         result_data: mediaUrl
       }).eq('tx_hash', txHash);
 
+      // Notify Success via Telegram
+      await sendTelegramNotification(`✅ *Asset Generated*\nType: MUSIC\nUser: \`${userAddress}\`\nTx: \`${txHash.substring(0, 10)}...\``);
+
       return NextResponse.json({ mediaUrl });
 
     } catch (aiError) {
       await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
+      
+      // Notify Failure via Telegram
+      await sendTelegramNotification(`❌ *Generation Failed*\nType: MUSIC\nUser: \`${userAddress}\`\nTx: \`${txHash.substring(0, 10)}...\``);
+      
       throw aiError; 
     }
 
