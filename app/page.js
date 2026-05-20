@@ -15,6 +15,34 @@ const TOKENS = {
   USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6, symbol: 'USDT' }
 };
 
+// Dynamic Prompt Examples for the Typewriter Effect
+const PLACEHOLDERS = {
+  IMAGE: [
+    "A neon cyberpunk cityscape at midnight...",
+    "A photorealistic portrait of an astronaut...",
+    "Isometric 3D rendering of a smart contract vault...",
+    "A cinematic shot of a futuristic sports car..."
+  ],
+  AUDIT: [
+    "Paste your ERC20 smart contract here...",
+    "Upload staking logic for reentrancy checks...",
+    "Paste Solidity code for gas optimization analysis...",
+    "Input multi-sig wallet code for a security review..."
+  ],
+  MUSIC: [
+    "An upbeat synthwave track for a racing game...",
+    "A lo-fi chill hop beat with soft piano...",
+    "Cinematic orchestral music for a boss battle...",
+    "A fast-paced electronic dance track..."
+  ],
+  VIDEO: [
+    "A cinematic drone shot over a glowing forest...",
+    "A 3D animation of a futuristic city building...",
+    "A cyberpunk character walking in the rain...",
+    "A time-lapse of a starry night sky over mountains..."
+  ]
+};
+
 export default function MasoMindApp() {
   const isMiniPay = useMiniPay();
   const { isConnected, address } = useAccount(); 
@@ -33,8 +61,14 @@ export default function MasoMindApp() {
 
   const [pendingState, setPendingState] = useState(null);
 
+  // Typewriter State Variables
+  const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
+  const [placeholderText, setPlaceholderText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 
+  // Token Balance Fetching
   useEffect(() => {
     if (!address) return;
     const fetchBalances = async () => {
@@ -60,6 +94,7 @@ export default function MasoMindApp() {
     fetchBalances();
   }, [address]);
 
+  // Load Pending State
   useEffect(() => {
     const hash = localStorage.getItem('pendingTxHash');
     const savedPrompt = localStorage.getItem('pendingPrompt');
@@ -71,6 +106,44 @@ export default function MasoMindApp() {
       setMode(savedMode);
     }
   }, []);
+
+  // Typewriter Effect Engine
+  useEffect(() => {
+    // Reset typing state immediately when user switches modes
+    setCurrentPlaceholderIndex(0);
+    setPlaceholderText('');
+    setIsDeleting(false);
+  }, [mode]);
+
+  useEffect(() => {
+    if (pendingState || prompt.length > 0) return; // Stop animating if user is typing or waiting
+
+    const currentExamples = PLACEHOLDERS[mode];
+    const fullText = currentExamples[currentPlaceholderIndex];
+    
+    // Typing speeds (ms per character)
+    let typingSpeed = isDeleting ? 30 : 60;
+
+    const timer = setTimeout(() => {
+      if (!isDeleting && placeholderText === fullText) {
+        // Pause at the end before deleting
+        setTimeout(() => setIsDeleting(true), 2500);
+      } else if (isDeleting && placeholderText === '') {
+        // Move to the next string in the array
+        setIsDeleting(false);
+        setCurrentPlaceholderIndex((prev) => (prev + 1) % currentExamples.length);
+      } else {
+        // Add or remove a character
+        setPlaceholderText(
+          isDeleting 
+            ? fullText.substring(0, placeholderText.length - 1)
+            : fullText.substring(0, placeholderText.length + 1)
+        );
+      }
+    }, typingSpeed);
+
+    return () => clearTimeout(timer);
+  }, [placeholderText, isDeleting, mode, currentPlaceholderIndex, pendingState, prompt]);
 
   const copyToClipboard = () => {
     if (!resultData) return;
@@ -110,7 +183,6 @@ export default function MasoMindApp() {
     }
   };
 
-  // Helper to save to Library
   const saveToLibrary = (generatedData, targetMode, targetPrompt) => {
     const existingLibrary = JSON.parse(localStorage.getItem('masomind_library') || '[]');
     const newItem = {
@@ -143,10 +215,7 @@ export default function MasoMindApp() {
 
       if (generatedContent) {
         setResultData(generatedContent);
-        
-        // Save to the new Library Vault
         saveToLibrary(generatedContent, targetMode, targetPrompt);
-
         localStorage.removeItem('pendingTxHash');
         localStorage.removeItem('pendingPrompt');
         localStorage.removeItem('pendingMode');
@@ -496,7 +565,7 @@ export default function MasoMindApp() {
             <textarea 
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Paste contract code..."
+              placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))}
               rows={2}
               disabled={!!pendingState}
               className="w-full pl-4 pr-32 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none disabled:opacity-50"
@@ -507,11 +576,7 @@ export default function MasoMindApp() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={!!pendingState}
-              placeholder={
-                mode === 'IMAGE' ? "Initialize intent..." :
-                mode === 'MUSIC' ? "e.g., Upbeat cyberpunk synthwave..." :
-                "e.g., A neon cityscape cinematic pan..."
-              }
+              placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))}
               className="w-full pl-4 pr-32 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 disabled:opacity-50"
             />
           )}
