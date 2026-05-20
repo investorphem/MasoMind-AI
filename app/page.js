@@ -33,7 +33,7 @@ export default function MasoMindApp() {
 
   const [pendingState, setPendingState] = useState(null);
 
-  const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
+  const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 
   useEffect(() => {
     if (!address) return;
