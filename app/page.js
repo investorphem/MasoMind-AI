@@ -142,50 +142,44 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 🚀 BULLETPROOF MINIPAY FIX: Absolutely No Blob URLs
+  // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
   const downloadAsset = async () => {
     if (!resultData) return;
     try {
-      // 1. Direct Links (Images): Open safely in a new tab where MiniPay allows saving natively
-      if (mode === 'IMAGE' && resultData.startsWith('http')) {
-        window.open(resultData, '_blank');
-        return;
-      }
-
-      // 2. Text (Audits): Use native text share
       if (mode === 'AUDIT') {
         if (navigator.share) {
           await navigator.share({ title: 'MasoMind Security Audit', text: resultData });
         } else {
-          alert("Please use the 'Copy' button in the report viewer to save this audit.");
+          navigator.clipboard.writeText(resultData);
+          alert("Audit copied to clipboard!");
         }
         return;
       }
 
-      // 3. Media (Audio/Video): Try native share file, otherwise instruct long-press
-      if (mode === 'MUSIC' || mode === 'VIDEO') {
-        try {
-          const response = await fetch(resultData);
-          const rawBlob = await response.blob();
-          const extension = mode === 'MUSIC' ? 'mp3' : 'mp4';
-          const mimeType = mode === 'MUSIC' ? 'audio/mp3' : 'video/mp4';
-          const file = new File([rawBlob], `MasoMind-${mode}.${extension}`, { type: mimeType });
+      // Create a hidden form to submit the Base64/URL directly to the Next.js server
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/download';
 
-          // Try native iOS/Android share sheet first
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: `MasoMind ${mode}` });
-            return;
-          }
-        } catch (e) {
-          console.warn("Native share blocked or unavailable:", e);
-        }
-        
-        // ULTIMATE FALLBACK FOR MINIPAY: User Instruction
-        alert(`To save this ${mode.toLowerCase()}, please long-press the media player above and select "Save" or "Download".`);
-      }
+      const dataInput = document.createElement('input');
+      dataInput.type = 'hidden';
+      dataInput.name = 'fileData';
+      dataInput.value = resultData;
+      form.appendChild(dataInput);
+
+      const typeInput = document.createElement('input');
+      typeInput.type = 'hidden';
+      typeInput.name = 'fileType';
+      typeInput.value = mode;
+      form.appendChild(typeInput);
+
+      document.body.appendChild(form);
+      form.submit(); // Forces native mobile download via server headers
+      document.body.removeChild(form);
+
     } catch (err) {
       console.error("Download action failed:", err);
-      alert("Browser restricted download. Please long-press the media to save it.");
+      alert("Failed to initiate download.");
     }
   };
 
