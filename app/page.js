@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Sparkles, Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -245,9 +245,21 @@ export default function MasoMindApp() {
       <header className="flex flex-col gap-4 py-4 px-2 mb-2 border-b border-white/5 pb-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-              <Sparkles className="w-5 h-5 text-emerald-400" />
+            
+            {/* ORIGINAL SVG LOGO PLACEMENT */}
+            <div className="flex items-center justify-center w-9 h-9 bg-emerald-500/10 rounded-lg border border-emerald-500/20 overflow-hidden text-emerald-400 p-1.5">
+               {/* Paste your `<svg>...</svg>` code directly below this comment to replace the generic placeholder.
+                 Alternatively, if your logo is an image file in the public folder, use: 
+                 <img src="/logo.svg" alt="MasoMind Logo" className="w-full h-full object-contain" />
+               */}
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
+                  <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+                  <path d="M18 14h-8"/>
+                  <path d="M15 18h-5"/>
+                  <path d="M10 6h8v4h-8V6Z"/>
+               </svg>
             </div>
+
             <div>
               <h1 className="font-bold text-lg tracking-wider text-white flex items-center gap-2">
                 MASOMIND
@@ -479,14 +491,19 @@ export default function MasoMindApp() {
           </button>
         </div>
         
-        {/* Company Signature & Info Link */}
-        <div className="mt-6 flex flex-col items-center justify-center space-y-2">
-          <Link href="/info" className="text-[10px] text-zinc-500 hover:text-emerald-400 transition-colors underline underline-offset-2">
-            FAQ, Docs, Privacy & Terms
-          </Link>
-          <div className="flex items-center gap-1 opacity-60">
-            <span className="text-[9px] text-zinc-600 font-mono">Engineered by</span>
-            <span className="text-[9px] font-bold text-emerald-500 tracking-widest uppercase">Masonode Technologies Ltd.</span>
+        {/* Enterprise Footer */}
+        <div className="mt-8 mb-2 flex flex-col items-center justify-center space-y-3">
+          <div className="flex items-center gap-4 text-[10px] text-zinc-500 font-medium">
+            <Link href="/info" className="hover:text-emerald-400 transition-colors">FAQ & Docs</Link>
+            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+            <Link href="/info" className="hover:text-emerald-400 transition-colors">Privacy & Terms</Link>
+            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+            <a href="mailto:support@masonode.com" className="hover:text-emerald-400 transition-colors">Support</a>
+          </div>
+          <div className="opacity-60">
+            <span className="text-[9px] font-mono font-bold text-zinc-500 tracking-widest uppercase">
+              © 2026 MASONODE TECHNOLOGIES LIMITED
+            </span>
           </div>
         </div>
       </footer>
