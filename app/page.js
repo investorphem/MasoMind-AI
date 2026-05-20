@@ -66,6 +66,7 @@ export default function MasoMindApp() {
   const [placeholderText, setPlaceholderText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // V2 Contract Address
   const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 
   // Token Balance Fetching
@@ -231,6 +232,7 @@ export default function MasoMindApp() {
     if (!prompt || !address) return;
     setResultData(null);
 
+    // Auto-Recovery Check
     if (pendingState) {
       await invokeAPI(pendingState.prompt, pendingState.hash, pendingState.mode);
       return;
@@ -264,9 +266,11 @@ export default function MasoMindApp() {
       if (allowance < amountToCharge) {
         setStatus(`Approving ${activeToken} limit...`);
         const approveAmount = parseUnits('10.0', token.decimals); 
+        
+        // Standard ERC20 Approve ABI
         const approveHash = await writeContractAsync({
           address: token.address,
-          abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]}],
+          abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"","type":"bool"}]}],
           functionName: 'approve',
           args: [CONTRACT_ADDRESS, approveAmount],
         });
@@ -294,6 +298,7 @@ export default function MasoMindApp() {
       setStatus('Confirming transaction on chain...');
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+      // Lock State into Vault
       localStorage.setItem('pendingTxHash', txHash);
       localStorage.setItem('pendingPrompt', prompt);
       localStorage.setItem('pendingMode', mode);
@@ -322,7 +327,7 @@ export default function MasoMindApp() {
       <header className="flex flex-col gap-4 py-4 px-2 mb-2 border-b border-white/5 pb-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            
+
             {/* OFFICIAL MASONODE SVG LOGO */}
             <div className="flex items-center justify-center w-9 h-9 bg-emerald-500/10 rounded-lg border border-emerald-500/20 overflow-hidden text-emerald-400 p-1.5">
                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" className="w-full h-full">
@@ -446,14 +451,12 @@ export default function MasoMindApp() {
             {/* NEW ENTERPRISE AUDIT UI */}
             {mode === 'AUDIT' && (
               <div className="w-full flex flex-col h-[450px] rounded-3xl glass-panel border border-zinc-800/50 shadow-2xl relative overflow-hidden bg-zinc-950/90">
-
-                {/* Fixed Top Action Bar */}
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
                   <div className="flex items-center gap-2">
                     <Code className="w-5 h-5 text-emerald-400" />
                     <div>
                       <h3 className="text-xs font-bold text-zinc-100 tracking-wider">SECURITY REPORT</h3>
-                      <p className="text-[9px] text-zinc-500 font-mono">Gemini 2.5 Flash</p>
+                      <p className="text-[9px] text-zinc-500 font-mono">Gemini Flash Analysis</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -473,7 +476,6 @@ export default function MasoMindApp() {
                   </div>
                 </div>
 
-                {/* Rendered Markdown Area */}
                 <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
                   <div className="prose prose-invert prose-emerald max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-headings:text-zinc-100 prose-a:text-emerald-400 prose-code:text-emerald-300 text-sm leading-relaxed">
                     <ReactMarkdown>{resultData}</ReactMarkdown>
@@ -495,6 +497,7 @@ export default function MasoMindApp() {
                 </button>
               </div>
             )}
+            
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video group overflow-hidden">
                 <video controls autoPlay className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
