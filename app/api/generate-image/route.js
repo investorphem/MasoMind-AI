@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createPublicClient, http, decodeFunctionData, parseUnits } from 'viem';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase'; // Import your DB client
+import { sendTelegramNotification } from '../../../lib/telegram'; // Import Telegram helper
 
 // UPDATE: Point to your new V2 Contract Address
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
@@ -68,6 +69,12 @@ export async function POST(req) {
         return NextResponse.json({ error: "Unsupported stablecoin" }, { status: 403 });
       }
 
+      // SECURITY TIER: Ensure the user actually paid the 0.10 required for images
+      const expectedAmount = parseUnits('0.10', decimals); 
+      if (paidAmount < expectedAmount) {
+         return NextResponse.json({ error: "Insufficient payment amount detected" }, { status: 403 });
+      }
+
       // Ensure serviceType matches the route's purpose
       if (paidServiceType !== 'IMAGE') {
          return NextResponse.json({ error: "Payment not routed for image generation" }, { status: 403 });
@@ -99,12 +106,19 @@ export async function POST(req) {
         })
         .eq('tx_hash', txHash);
 
+      // Notify Success via Telegram
+      await sendTelegramNotification(`✅ *Asset Generated*\nType: IMAGE\nUser: \`${userAddress}\`\nTx: \`${txHash.substring(0, 10)}...\``);
+
       return NextResponse.json({ imageUrl });
 
     } catch (aiError) {
       await supabase.from('transactions')
         .update({ status: 'FAILED' })
         .eq('tx_hash', txHash);
+        
+      // Notify Failure via Telegram so you can investigate
+      await sendTelegramNotification(`❌ *Generation Failed*\nType: IMAGE\nUser: \`${userAddress}\`\nTx: \`${txHash.substring(0, 10)}...\``);
+      
       throw aiError;
     }
 
