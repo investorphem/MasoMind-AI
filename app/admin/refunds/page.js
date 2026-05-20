@@ -1,21 +1,19 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract } from 'wagmi';
-import { parseUnits } from 'viem';
 import { supabase } from '../../../lib/supabase';
-import { RefreshCw, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { RefreshCw, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export default function AdminRefunds() {
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { writeContractAsync } = useWriteContract();
 
   const fetchRefunds = async () => {
     setLoading(true);
     const { data } = await supabase
       .from('transactions')
       .select('*')
-      .eq('status', 'REFUND_PENDING');
+      .eq('status', 'REFUND_PENDING')
+      .order('timestamp', { ascending: false });
     setRefunds(data || []);
     setLoading(false);
   };
@@ -23,44 +21,58 @@ export default function AdminRefunds() {
   useEffect(() => { fetchRefunds(); }, []);
 
   const processRefund = async (tx) => {
-    try {
-      // Assuming a simple ERC20 transfer function on your contract or calling the token contract
-      // This is a placeholder for your refund logic
-      const hash = await writeContractAsync({
-        address: tx.token_address, // Ensure you store this in your DB
-        abi: [{"name":"transfer","type":"function","stateMutability":"nonpayable","inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}]}],
-        functionName: 'transfer',
-        args: [tx.user_address, parseUnits(tx.amount.toString(), 18)],
-      });
-
-      await supabase.from('transactions').update({ status: 'REFUNDED', refund_tx: hash }).eq('tx_hash', tx.tx_hash);
-      fetchRefunds();
-    } catch (err) {
-      console.error("Refund failed:", err);
-    }
+    // 1. Trigger your contract interaction logic here
+    // 2. Once the blockchain transaction confirms, update DB:
+    await supabase.from('transactions')
+      .update({ status: 'REFUNDED' })
+      .eq('tx_hash', tx.tx_hash);
+      
+    fetchRefunds();
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto text-zinc-100">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-        <AlertCircle className="text-amber-500" /> Settlement Dashboard
-      </h1>
-      
-      <div className="space-y-4">
-        {refunds.map(tx => (
-          <div key={tx.tx_hash} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex items-center justify-between">
-            <div>
-              <p className="text-xs text-zinc-400">User: {tx.user_address}</p>
-              <p className="text-sm font-bold text-amber-500">{tx.amount} USDT</p>
-            </div>
-            <button 
-              onClick={() => processRefund(tx)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-2"
-            >
-              <Send className="w-3 h-3" /> Process Refund
-            </button>
-          </div>
-        ))}
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold tracking-tight">Treasury Settlement</h1>
+          <button onClick={fetchRefunds} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+          {refunds.length === 0 ? (
+            <div className="p-12 text-center text-zinc-500">No pending refunds.</div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-950/50 uppercase text-[10px] text-zinc-500 tracking-widest">
+                <tr>
+                  <th className="p-4">User</th>
+                  <th className="p-4">Service</th>
+                  <th className="p-4">Amount</th>
+                  <th className="p-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {refunds.map(tx => (
+                  <tr key={tx.tx_hash} className="hover:bg-zinc-800/30 transition-colors">
+                    <td className="p-4 font-mono text-emerald-500">{tx.user_address.substring(0,10)}...</td>
+                    <td className="p-4">{tx.service_type}</td>
+                    <td className="p-4">Pending</td>
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => processRefund(tx)}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-[10px] transition-all"
+                      >
+                        SEND REFUND
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );
