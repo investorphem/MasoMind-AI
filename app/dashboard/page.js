@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, History, ExternalLink, Image as ImageIcon, 
   Code, Music, Video, XCircle, Download, Loader2,
-  ChevronLeft, ChevronRight 
+  ChevronLeft, ChevronRight, AlertCircle, Clock // Added for Refund UI
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -13,8 +13,8 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState(null); 
+  const [requesting, setRequesting] = useState(null); // Track refund loading state
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -27,7 +27,6 @@ export default function Dashboard() {
     const fetchLedger = async () => {
       setLoading(true);
       try {
-        // Fetch with pagination parameters
         const res = await fetch(`/api/get-transactions?address=${address}&page=${currentPage}&limit=10`);
         const data = await res.json();
 
@@ -43,7 +42,30 @@ export default function Dashboard() {
     };
 
     fetchLedger();
-  }, [address, currentPage]); // Re-fetch when currentPage changes
+  }, [address, currentPage]);
+
+  // 🚀 NEW: Secure database-synced Refund Trigger
+  const handleRefund = async (tx) => {
+    if (!address) return;
+    setRequesting(tx.tx_hash);
+    try {
+      const res = await fetch('/api/trigger-refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txHash: tx.tx_hash, userAddress: address })
+      });
+      if (res.ok) {
+        alert('Refund request submitted to Treasury.');
+        // Optimistically update the UI to show pending
+        setTransactions(prev => prev.map(t => t.tx_hash === tx.tx_hash ? { ...t, status: 'REFUND_PENDING' } : t));
+      } else {
+        alert('Failed to request refund. It may have already been processed.');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setRequesting(null);
+  };
 
   const truncateHash = (hash) => {
     if (!hash) return '';
@@ -60,7 +82,6 @@ export default function Dashboard() {
     }
   };
 
-  // 🚀 NATIVE MOBILE FIX APPLIED HERE
   const downloadAsset = async (tx) => {
     if (!tx.result_data || tx.service_type === 'AUDIT') return;
 
@@ -76,16 +97,14 @@ export default function Dashboard() {
       const fileName = `MasoMind-${tx.service_type}-${Date.now()}.${extension}`;
       const file = new File([blob], fileName, { type: mimeType });
 
-      // Try Web Share API first (Perfect for MiniPay & Mobile Browsers)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `MasoMind ${tx.service_type} Asset`,
         });
-        return; // Stop here if native share succeeds
+        return; 
       }
 
-      // FALLBACK: Standard Web Download (For Desktop Browsers)
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -97,7 +116,6 @@ export default function Dashboard() {
 
     } catch (err) {
       console.error("Blob download failed, opening in new tab:", err);
-      // LAST RESORT: Open directly in a new tab if strictly blocked
       window.open(tx.result_data, '_blank');
     }
   };
@@ -163,16 +181,29 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <p className="text-xs text-zinc-300 font-medium truncate mb-1 pr-2">{tx.prompt}</p>
-                  <a href={`https://celoscan.io/tx/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-emerald-500/70 hover:text-emerald-400 transition-colors w-fit" onClick={(e) => e.stopPropagation()}>
-                    {truncateHash(tx.tx_hash)} <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
+                  
+                  <div className="flex items-center justify-between mt-2">
+                    <a href={`https://celoscan.io/tx/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-emerald-500/70 hover:text-emerald-400 transition-colors w-fit" onClick={(e) => e.stopPropagation()}>
+                      {truncateHash(tx.tx_hash)} <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                    
+                    {/* 🚀 NEW: In-list Refund Button for FAILED TXs */}
+                    {tx.status === 'FAILED' && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleRefund(tx); }}
+                        className="text-[9px] font-bold text-amber-500 flex items-center gap-1 hover:text-amber-400 px-2 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20 transition-colors"
+                      >
+                        {requesting === tx.tx_hash ? <Clock className="w-3 h-3 animate-spin" /> : <AlertCircle className="w-3 h-3" />}
+                        {requesting === tx.tx_hash ? 'Requesting...' : 'Request Refund'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ENTERPRISE PAGINATION CONTROLS */}
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between mt-auto mb-8 pt-4 border-t border-zinc-800 w-full">
             <button 
@@ -198,7 +229,6 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* ASSET VIEWER MODAL */}
       {selectedTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="glass-panel w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl border border-zinc-700 shadow-2xl overflow-hidden relative bg-zinc-950/90">
