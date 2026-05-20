@@ -246,18 +246,42 @@ export default function MasoMindApp() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             
-            {/* ORIGINAL SVG LOGO PLACEMENT */}
+            {/* OFFICIAL MASONODE SVG LOGO */}
             <div className="flex items-center justify-center w-9 h-9 bg-emerald-500/10 rounded-lg border border-emerald-500/20 overflow-hidden text-emerald-400 p-1.5">
-               {/* Paste your `<svg>...</svg>` code directly below this comment to replace the generic placeholder.
-                 Alternatively, if your logo is an image file in the public folder, use: 
-                 <img src="/logo.svg" alt="MasoMind Logo" className="w-full h-full object-contain" />
-               */}
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
-                  <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
-                  <path d="M18 14h-8"/>
-                  <path d="M15 18h-5"/>
-                  <path d="M10 6h8v4h-8V6Z"/>
-               </svg>
+               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" className="w-full h-full">
+                <defs>
+                  <linearGradient id="masoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#34d399" />
+                    <stop offset="50%" stopColor="#10b981" />
+                    <stop offset="100%" stopColor="#14b8a6" />
+                  </linearGradient>
+                  <linearGradient id="boltGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="100%" stopColor="#34d399" />
+                  </linearGradient>
+                  <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="8" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                </defs>
+                <g transform="translate(0, 10)" filter="url(#glow)">
+                  <path d="M236,140 C170,140 130,185 130,250 C130,300 160,335 190,355 C205,365 215,385 220,400 L236,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" opacity="0.85"/>
+                  <path d="M165,210 Q195,230 225,210" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" opacity="0.6"/>
+                  <path d="M145,270 Q180,280 210,260" fill="none" stroke="#14b8a6" strokeWidth="4" strokeLinecap="round" opacity="0.6"/>
+                  <path d="M175,325 Q200,310 220,330" fill="none" stroke="#34d399" strokeWidth="4" strokeLinecap="round" opacity="0.4"/>
+                  <path d="M276,140 C342,140 382,185 382,250 C382,300 352,335 322,355 C307,365 297,385 292,400 L276,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M310,185 L285,220 L340,220" fill="none" stroke="#14b8a6" strokeWidth="3" strokeLinejoin="round" opacity="0.5"/>
+                  <path d="M365,260 L320,280 L350,315" fill="none" stroke="#10b981" strokeWidth="3" strokeLinejoin="round" opacity="0.5"/>
+                  <polygon points="270,110 190,260 250,260 220,410 320,230 255,230" fill="url(#boltGradient)" />
+                  <circle cx="130" cy="250" r="7" fill="#34d399" />
+                  <circle cx="190" cy="155" r="5" fill="#14b8a6" />
+                  <circle cx="322" cy="355" r="6" fill="#ffffff" />
+                  <circle cx="382" cy="250" r="7" fill="#34d399" />
+                  <circle cx="220" cy="400" r="5" fill="#10b981" />
+                  <circle cx="292" cy="400" r="5" fill="#10b981" />
+                  <circle cx="250" cy="140" r="4" fill="#ffffff" />
+                </g>
+              </svg>
             </div>
 
             <div>
