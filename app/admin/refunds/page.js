@@ -6,7 +6,7 @@ import { useAccount, useWriteContract } from 'wagmi';
 import { parseUnits } from 'viem';
 
 // 🚨 SECURITY: Replace this with your exact owner wallet address (in lowercase)
-const ADMIN_WALLET = '0x1234567890abcdef1234567890abcdef12345678'; 
+const ADMIN_WALLET = '0xec24bAfBc989a9bE5f6F0eAD8848753B5E4aE0B6'; 
 
 // Celo USDT Address for executing the refund
 const USDT_ADDRESS = '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e';
