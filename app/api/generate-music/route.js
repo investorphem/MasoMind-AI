@@ -62,11 +62,16 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Log to DB
+    // 2. Log to DB (Included token_address for auto-refund compatibility)
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
-        tx_hash: txHash, prompt: prompt, service_type: 'MUSIC', status: 'PENDING', user_address: userAddress.toLowerCase()
+        tx_hash: txHash, 
+        prompt: prompt, 
+        service_type: 'MUSIC', 
+        status: 'PENDING', 
+        user_address: userAddress.toLowerCase(),
+        token_address: paidToken.toLowerCase() // 🚀 Mandatory for Auto-Refund
       }]);
     }
 
@@ -83,7 +88,7 @@ export async function POST(req) {
 
     const data = await response.json();
     if (!data.candidates?.[0]?.content?.parts?.[0]?.inlineData) throw new Error("AI Generation failed");
-    
+
     const mediaUrl = `data:audio/mp3;base64,${data.candidates[0].content.parts[0].inlineData.data}`;
 
     // 4. 🚀 AUTONOMOUS DELIVERY (Agent signing to the contract)
