@@ -109,31 +109,26 @@ export default function MasoMindApp() {
 
   // Typewriter Effect Engine
   useEffect(() => {
-    // Reset typing state immediately when user switches modes
     setCurrentPlaceholderIndex(0);
     setPlaceholderText('');
     setIsDeleting(false);
   }, [mode]);
 
   useEffect(() => {
-    if (pendingState || prompt.length > 0) return; // Stop animating if user is typing or waiting
+    if (pendingState || prompt.length > 0) return;
 
     const currentExamples = PLACEHOLDERS[mode];
     const fullText = currentExamples[currentPlaceholderIndex];
-    
-    // Typing speeds (ms per character)
+
     let typingSpeed = isDeleting ? 30 : 60;
 
     const timer = setTimeout(() => {
       if (!isDeleting && placeholderText === fullText) {
-        // Pause at the end before deleting
         setTimeout(() => setIsDeleting(true), 2500);
       } else if (isDeleting && placeholderText === '') {
-        // Move to the next string in the array
         setIsDeleting(false);
         setCurrentPlaceholderIndex((prev) => (prev + 1) % currentExamples.length);
       } else {
-        // Add or remove a character
         setPlaceholderText(
           isDeleting 
             ? fullText.substring(0, placeholderText.length - 1)
@@ -201,7 +196,7 @@ export default function MasoMindApp() {
     let endpoint = '/api/generate-image';
     if (targetMode === 'AUDIT') endpoint = '/api/audit-code';
     if (targetMode === 'MUSIC') endpoint = '/api/generate-music';
-    if (targetMode === 'VIDEO') endpoint = '/api/generate-video';
+    if (targetMode === 'VIDEO'] = '/api/generate-video';
 
     try {
       const res = await fetch(endpoint, {
@@ -282,7 +277,7 @@ export default function MasoMindApp() {
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: [{
-          "name": "executeService",
+          "name": "requestService",
           "type": "function",
           "stateMutability": "nonpayable",
           "inputs": [
@@ -292,7 +287,7 @@ export default function MasoMindApp() {
             { "name": "serviceType", "type": "string" }
           ]
         }],
-        functionName: 'executeService',
+        functionName: 'requestService',
         args: [token.address, amountToCharge, prompt, mode],
       });
 
