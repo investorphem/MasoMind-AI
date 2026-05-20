@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
-import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
+import { createPublicClient, custom, http, parseUnits, formatUnits } from 'viem'; // 🚀 Added http here
 import { celo } from 'viem/chains';
 import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
@@ -66,10 +66,16 @@ export default function MasoMindApp() {
 
   const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 
+  // Token Balance Fetching
   useEffect(() => {
     if (!address) return;
     const fetchBalances = async () => {
-      const publicClient = createPublicClient({ chain: celo, transport: custom(window.ethereum || window.parent?.ethereum) });
+      // 🚀 FIX: Using HTTP RPC instead of injected provider so it works safely on ANY browser
+      const publicClient = createPublicClient({ 
+        chain: celo, 
+        transport: http() 
+      });
+      
       const newBalances = { ...balances };
 
       for (const tokenKey of Object.keys(TOKENS)) {
@@ -83,7 +89,7 @@ export default function MasoMindApp() {
           });
           newBalances[tokenKey] = Number(formatUnits(bal, token.decimals)).toFixed(2);
         } catch (e) {
-          console.error(`Failed to fetch ${tokenKey}`);
+          console.error(`Failed to fetch ${tokenKey}`, e);
         }
       }
       setBalances(newBalances);
@@ -142,7 +148,6 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
   const downloadAsset = async () => {
     if (!resultData) return;
     try {
@@ -156,7 +161,6 @@ export default function MasoMindApp() {
         return;
       }
 
-      // Create a hidden form to submit the Base64/URL directly to the Next.js server
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = '/api/download';
@@ -174,7 +178,7 @@ export default function MasoMindApp() {
       form.appendChild(typeInput);
 
       document.body.appendChild(form);
-      form.submit(); // Forces native mobile download via server headers
+      form.submit(); 
       document.body.removeChild(form);
 
     } catch (err) {
@@ -250,7 +254,11 @@ export default function MasoMindApp() {
     const amountToCharge = parseUnits(priceStr, token.decimals);
 
     try {
-      const publicClient = createPublicClient({ chain: celo, transport: custom(window.ethereum || window.parent?.ethereum) });
+      // 🚀 FIX: Also use HTTP RPC for pre-flight read checks
+      const publicClient = createPublicClient({ 
+        chain: celo, 
+        transport: http() 
+      });
 
       if (Number(balances[activeToken]) < Number(priceStr)) {
         setStatus(`Low Balance: You need ${priceStr} ${activeToken}.`);
