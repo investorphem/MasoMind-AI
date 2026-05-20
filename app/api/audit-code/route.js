@@ -84,31 +84,36 @@ export async function POST(req) {
     const aiData = await aiResponse.json();
     const auditReport = aiData.candidates[0].content.parts[0].text;
 
-    // 4. 🚀 SMART DELIVERY (Avoid Reverts)
-    const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-    const agentClient = createWalletClient({ account, chain: celo, transport: http() });
-
-    // Send only a summary to the blockchain to guarantee the transaction succeeds
-    const summary = `Audit Completed: ${prompt.substring(0, 20)}...`;
-    const deliveryHash = await agentClient.writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: DELIVERY_ABI,
-      functionName: 'deliverResult',
-      args: [userAddress, summary]
-    });
-
-    // 5. Finalize DB
+    // 4. NON-BLOCKING DELIVERY
+    // We update DB to COMPLETED immediately so the user gets their result.
     await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: auditReport, tx_hash: deliveryHash })
+      .update({ status: 'COMPLETED', result_data: auditReport })
       .eq('tx_hash', txHash);
 
-    await sendTelegramNotification(`✅ *Audit Completed*\nTx: \`${deliveryHash.substring(0, 10)}...\``);
+    // Blockchain delivery runs in the background
+    (async () => {
+      try {
+        const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
+        const agentClient = createWalletClient({ account, chain: celo, transport: http() });
+        const summary = `Audit Completed: ${prompt.substring(0, 15)}...`;
+        
+        await agentClient.writeContract({
+          address: CONTRACT_ADDRESS,
+          abi: DELIVERY_ABI,
+          functionName: 'deliverResult',
+          args: [userAddress, summary]
+        });
+        await sendTelegramNotification(`✅ *Audit Delivered On-Chain*`);
+      } catch (err) {
+        console.error("Background blockchain delivery failed:", err);
+      }
+    })();
 
+    // 5. Return success immediately
     return NextResponse.json({ report: auditReport });
 
   } catch (error) {
     console.error("Audit API Error:", error);
-    // Keep it as PENDING or handle via manual retry instead of forcing FAILED
     return NextResponse.json({ error: "Generation failed, check logs" }, { status: 500 });
   }
 }
