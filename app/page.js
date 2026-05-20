@@ -148,33 +148,50 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 🚀 NATIVE MOBILE FIX APPLIED HERE
   const downloadAsset = async () => {
     if (!resultData) return;
     try {
       let blob;
-      let extension;
+      let extension = 'jpg';
+      let mimeType = 'image/jpeg';
 
       if (mode === 'AUDIT') {
         blob = new Blob([resultData], { type: 'text/markdown' });
         extension = 'md';
+        mimeType = 'text/markdown';
       } else {
         const response = await fetch(resultData);
         blob = await response.blob();
-        extension = 'jpg';
-        if (mode === 'MUSIC') extension = 'mp3';
-        if (mode === 'VIDEO') extension = 'mp4';
+        if (mode === 'MUSIC') { extension = 'mp3'; mimeType = 'audio/mp3'; }
+        if (mode === 'VIDEO') { extension = 'mp4'; mimeType = 'video/mp4'; }
       }
 
+      const fileName = `MasoMind-${mode}-${Date.now()}.${extension}`;
+      const file = new File([blob], fileName, { type: mimeType });
+
+      // Try Web Share API first (Perfect for MiniPay & Mobile Browsers)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `MasoMind ${mode} Asset`,
+        });
+        return; // Stop here if native share succeeds
+      }
+
+      // FALLBACK: Standard Web Download (For Desktop Browsers)
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `MasoMind-${mode}-${Date.now()}.${extension}`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
+
     } catch (err) {
-      console.error("Blob download failed:", err);
+      console.error("Download failed:", err);
+      // LAST RESORT: Open in new tab
       if (mode !== 'AUDIT') window.open(resultData, '_blank');
     }
   };
@@ -266,7 +283,7 @@ export default function MasoMindApp() {
       if (allowance < amountToCharge) {
         setStatus(`Approving ${activeToken} limit...`);
         const approveAmount = parseUnits('10.0', token.decimals); 
-        
+
         // Standard ERC20 Approve ABI
         const approveHash = await writeContractAsync({
           address: token.address,
@@ -497,7 +514,7 @@ export default function MasoMindApp() {
                 </button>
               </div>
             )}
-            
+
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video group overflow-hidden">
                 <video controls autoPlay className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
