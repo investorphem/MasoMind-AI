@@ -142,47 +142,50 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 🚀 BULLETPROOF MINIPAY FIX: Absolutely No Blob URLs
   const downloadAsset = async () => {
     if (!resultData) return;
     try {
-      let blob;
-      let extension = 'jpg';
-      let mimeType = 'image/jpeg';
+      // 1. Direct Links (Images): Open safely in a new tab where MiniPay allows saving natively
+      if (mode === 'IMAGE' && resultData.startsWith('http')) {
+        window.open(resultData, '_blank');
+        return;
+      }
 
+      // 2. Text (Audits): Use native text share
       if (mode === 'AUDIT') {
-        blob = new Blob([resultData], { type: 'text/markdown' });
-        extension = 'md';
-        mimeType = 'text/markdown';
-      } else {
-        const response = await fetch(resultData);
-        blob = await response.blob();
-        if (mode === 'MUSIC') { extension = 'mp3'; mimeType = 'audio/mp3'; }
-        if (mode === 'VIDEO') { extension = 'mp4'; mimeType = 'video/mp4'; }
+        if (navigator.share) {
+          await navigator.share({ title: 'MasoMind Security Audit', text: resultData });
+        } else {
+          alert("Please use the 'Copy' button in the report viewer to save this audit.");
+        }
+        return;
       }
 
-      const fileName = `MasoMind-${mode}-${Date.now()}.${extension}`;
-      const file = new File([blob], fileName, { type: mimeType });
+      // 3. Media (Audio/Video): Try native share file, otherwise instruct long-press
+      if (mode === 'MUSIC' || mode === 'VIDEO') {
+        try {
+          const response = await fetch(resultData);
+          const rawBlob = await response.blob();
+          const extension = mode === 'MUSIC' ? 'mp3' : 'mp4';
+          const mimeType = mode === 'MUSIC' ? 'audio/mp3' : 'video/mp4';
+          const file = new File([rawBlob], `MasoMind-${mode}.${extension}`, { type: mimeType });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `MasoMind ${mode} Asset`,
-        });
-        return; 
+          // Try native iOS/Android share sheet first
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `MasoMind ${mode}` });
+            return;
+          }
+        } catch (e) {
+          console.warn("Native share blocked or unavailable:", e);
+        }
+        
+        // ULTIMATE FALLBACK FOR MINIPAY: User Instruction
+        alert(`To save this ${mode.toLowerCase()}, please long-press the media player above and select "Save" or "Download".`);
       }
-
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
-
     } catch (err) {
-      console.error("Download failed:", err);
-      if (mode !== 'AUDIT') window.open(resultData, '_blank');
+      console.error("Download action failed:", err);
+      alert("Browser restricted download. Please long-press the media to save it.");
     }
   };
 
@@ -325,7 +328,6 @@ export default function MasoMindApp() {
     setPrompt('');
   };
 
-  // 🚀 NEW: Direct Refund Trigger from the Home Screen
   const handleRefundFromHome = async () => {
     if (!pendingState || !address) return;
     setStatus('Requesting refund...');
@@ -337,7 +339,7 @@ export default function MasoMindApp() {
       });
       if (res.ok) {
         alert('Refund request submitted to Treasury. Check Ledger for status.');
-        clearPendingState(); // Clear the screen so they aren't stuck
+        clearPendingState();
       } else {
         alert('Failed to request refund. It may have already been processed.');
       }
@@ -550,8 +552,7 @@ export default function MasoMindApp() {
                   <p className="text-xs text-zinc-400 text-center mb-6 px-4">
                     The payment processed, but AI failed to complete. Retry below without paying again, or request a refund.
                   </p>
-                  
-                  {/* 🚀 NEW: Immediate Refund Trigger UI */}
+
                   <button 
                     onClick={handleRefundFromHome}
                     className="px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
