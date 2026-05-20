@@ -4,7 +4,8 @@ import { useAccount } from 'wagmi';
 import Link from 'next/link';
 import { 
   ArrowLeft, History, ExternalLink, Image as ImageIcon, 
-  Code, Music, Video, XCircle, Download, Loader2 
+  Code, Music, Video, XCircle, Download, Loader2,
+  ChevronLeft, ChevronRight // Added for pagination UI
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -13,6 +14,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState(null); 
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     if (!address) {
       setLoading(false);
@@ -20,13 +25,15 @@ export default function Dashboard() {
     }
 
     const fetchLedger = async () => {
+      setLoading(true);
       try {
-        // Securely fetch through your backend API instead of client-side Supabase
-        const res = await fetch(`/api/get-transactions?address=${address}`);
+        // Fetch with pagination parameters
+        const res = await fetch(`/api/get-transactions?address=${address}&page=${currentPage}&limit=10`);
         const data = await res.json();
 
         if (data.transactions) {
           setTransactions(data.transactions);
+          setTotalPages(data.pagination?.totalPages || 1);
         }
       } catch (err) {
         console.error('Error fetching ledger:', err);
@@ -36,7 +43,7 @@ export default function Dashboard() {
     };
 
     fetchLedger();
-  }, [address]);
+  }, [address, currentPage]); // Re-fetch when currentPage changes
 
   const truncateHash = (hash) => {
     if (!hash) return '';
@@ -100,7 +107,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
 
-      <header className="flex items-center justify-between py-4 mb-4 border-b border-white/5 pb-4">
+      <header className="flex items-center justify-between py-4 mb-4 border-b border-white/5 pb-4 max-w-md mx-auto w-full">
         <Link href="/" className="flex items-center gap-2 p-2 bg-zinc-900/80 rounded-full border border-zinc-800 hover:bg-zinc-800 transition-colors">
           <ArrowLeft className="w-4 h-4 text-emerald-400" />
         </Link>
@@ -110,7 +117,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-md mx-auto relative">
+      <main className="flex-1 w-full max-w-md mx-auto relative flex flex-col">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
@@ -122,7 +129,7 @@ export default function Dashboard() {
             <p className="text-xs text-zinc-600 mt-2">Generate your first asset to see it here.</p>
           </div>
         ) : (
-          <div className="space-y-3 pb-20">
+          <div className="space-y-3 pb-6 flex-1">
             {transactions.map((tx) => (
               <div 
                 key={tx.id || tx.tx_hash} 
@@ -151,8 +158,34 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+
+        {/* ENTERPRISE PAGINATION CONTROLS */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-auto mb-8 pt-4 border-t border-zinc-800 w-full">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 px-4 py-2 bg-zinc-900 rounded-lg text-xs font-bold text-zinc-300 disabled:opacity-30 transition-all hover:bg-zinc-800 border border-zinc-800"
+            >
+              <ChevronLeft className="w-4 h-4" /> Prev
+            </button>
+            
+            <span className="text-xs font-mono text-zinc-500">
+              PAGE <span className="text-emerald-400">{currentPage}</span> OF {totalPages}
+            </span>
+
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 px-4 py-2 bg-zinc-900 rounded-lg text-xs font-bold text-zinc-300 disabled:opacity-30 transition-all hover:bg-zinc-800 border border-zinc-800"
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </main>
 
+      {/* ASSET VIEWER MODAL */}
       {selectedTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="glass-panel w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl border border-zinc-700 shadow-2xl overflow-hidden relative bg-zinc-950/90">
