@@ -19,7 +19,7 @@ MasoMind offers four distinct AI services, routed seamlessly through a single sm
 3. **AI Music Engine (0.50 Stablecoins):** Powered by Google Lyria 3. Generates complete 30-second, high-fidelity music tracks and soundscapes for GameFi and Web3 creators.
 4. **AI Video Studio (1.00 Stablecoins):** Powered by Google Veo 3.1. Generates short, high-quality cinematic video clips with natively generated audio.
 
-## ✨ Core Infrastructur
+## ✨ Core Infrastructure
 
 * **Omni-Token Payment Gateway:** Pay natively with Celo ecosystem stablecoins (`cUSD`, `USDC`, `USDT`).
 * **Smart Allowance Auto-Routing:** The frontend handles token approvals and balance checks contextually.
