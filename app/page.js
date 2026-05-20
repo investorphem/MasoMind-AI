@@ -626,7 +626,7 @@ export default function MasoMindApp() {
             <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
             <Link href="/info/terms" className="hover:text-emerald-400 transition-colors">Terms</Link>
             <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
-            <a href="https://t.me/your_telegram_group_here" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">Support</a>
+            <a href="https://t.me/MasoMind" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">Support</a>
           </div>
           <div className="opacity-60">
             <span className="text-[9px] font-mono font-bold text-zinc-500 tracking-widest uppercase">
