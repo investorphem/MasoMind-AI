@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, parseUnits, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -79,20 +79,16 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // FORCED BLOB DOWNLOAD (Handles Media & Markdown Audits)
   const downloadAsset = async () => {
     if (!resultData) return;
-
     try {
       let blob;
       let extension;
 
       if (mode === 'AUDIT') {
-        // Create a text/markdown blob for the audit
         blob = new Blob([resultData], { type: 'text/markdown' });
         extension = 'md';
       } else {
-        // Fetch media blob
         const response = await fetch(resultData);
         blob = await response.blob();
         extension = 'jpg';
@@ -104,16 +100,28 @@ export default function MasoMindApp() {
       const a = document.createElement("a");
       a.href = blobUrl;
       a.download = `MasoMind-${mode}-${Date.now()}.${extension}`;
-
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("Blob download failed:", err);
-      // Fallback
       if (mode !== 'AUDIT') window.open(resultData, '_blank');
     }
+  };
+
+  // Helper to save to Library
+  const saveToLibrary = (generatedData, targetMode, targetPrompt) => {
+    const existingLibrary = JSON.parse(localStorage.getItem('masomind_library') || '[]');
+    const newItem = {
+      id: Date.now().toString(),
+      type: targetMode,
+      category: targetMode === 'AUDIT' ? 'DOCUMENT' : 'MEDIA',
+      data: generatedData,
+      prompt: targetPrompt,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('masomind_library', JSON.stringify([newItem, ...existingLibrary]));
   };
 
   const invokeAPI = async (targetPrompt, targetHash, targetMode) => {
@@ -131,9 +139,14 @@ export default function MasoMindApp() {
       });
 
       const data = await res.json();
+      const generatedContent = data.imageUrl || data.report || data.mediaUrl;
 
-      if (data.imageUrl || data.report || data.mediaUrl) {
-        setResultData(data.imageUrl || data.report || data.mediaUrl);
+      if (generatedContent) {
+        setResultData(generatedContent);
+        
+        // Save to the new Library Vault
+        saveToLibrary(generatedContent, targetMode, targetPrompt);
+
         localStorage.removeItem('pendingTxHash');
         localStorage.removeItem('pendingPrompt');
         localStorage.removeItem('pendingMode');
@@ -285,12 +298,19 @@ export default function MasoMindApp() {
             </div>
 
             <div>
-              <h1 className="font-bold text-lg tracking-wider text-white flex items-center gap-2">
-                MASOMIND
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-lg tracking-wider text-white">MASOMIND</h1>
                 {isConnected && (
-                  <Link href="/dashboard" className="px-2 py-0.5 bg-zinc-800 rounded text-[10px] text-emerald-400 hover:bg-zinc-700 transition-colors border border-zinc-700">Ledger</Link>
+                  <div className="flex gap-1.5 ml-1">
+                    <Link href="/library" className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">
+                      <Library className="w-2.5 h-2.5" /> Library
+                    </Link>
+                    <Link href="/dashboard" className="flex items-center gap-1 px-2 py-0.5 bg-zinc-800 rounded text-[10px] text-zinc-400 hover:bg-zinc-700 transition-colors border border-zinc-700">
+                      <List className="w-2.5 h-2.5" /> Ledger
+                    </Link>
+                  </div>
                 )}
-              </h1>
+              </div>
               <p className="text-[10px] text-emerald-500/70 uppercase tracking-widest font-mono">Enterprise Suite</p>
             </div>
           </div>
