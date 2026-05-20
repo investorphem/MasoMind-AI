@@ -18,7 +18,7 @@ export default function LibraryPage() {
       // Auto-expire items older than 7 days (7 * 24 * 60 * 60 * 1000 = 604800000ms)
       const SEVEN_DAYS_MS = 604800000;
       const validItems = parsedData.filter(item => (Date.now() - item.timestamp) < SEVEN_DAYS_MS);
-      
+
       setItems(validItems);
 
       // Clean up localStorage if items expired
@@ -34,16 +34,16 @@ export default function LibraryPage() {
     try {
       // Support both naming conventions just in case
       const hashToRefund = item.txHash || item.tx_hash; 
-      
+
       const res = await fetch('/api/trigger-refund', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ txHash: hashToRefund, userAddress: address })
       });
-      
+
       if (res.ok) alert('Refund request submitted to MasoMind Treasury.');
       else alert('Failed to request refund. It may have already been processed.');
-      
+
     } catch (err) {
       console.error(err);
     }
@@ -56,26 +56,47 @@ export default function LibraryPage() {
     localStorage.setItem('masomind_library', JSON.stringify(updatedItems));
   };
 
+  // 🚀 NATIVE MOBILE FIX APPLIED HERE
   const downloadAsset = async (item) => {
     try {
-      let blob, extension;
+      let blob, extension, mimeType = 'image/jpeg';
+      
       if (item.type === 'AUDIT') {
         blob = new Blob([item.data], { type: 'text/markdown' });
         extension = 'md';
+        mimeType = 'text/markdown';
       } else {
         const response = await fetch(item.data);
         blob = await response.blob();
         extension = item.type === 'MUSIC' ? 'mp3' : item.type === 'VIDEO' ? 'mp4' : 'jpg';
+        mimeType = item.type === 'MUSIC' ? 'audio/mp3' : item.type === 'VIDEO' ? 'video/mp4' : 'image/jpeg';
       }
+
+      const fileName = `MasoMind-${item.type}-${item.id}.${extension}`;
+      const file = new File([blob], fileName, { type: mimeType });
+
+      // Try Web Share API first (Perfect for MiniPay & Mobile Browsers)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `MasoMind ${item.type} Asset`,
+        });
+        return; // Stop here if native share succeeds
+      }
+
+      // FALLBACK: Standard Web Download (For Desktop Browsers)
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `MasoMind-${item.type}-${item.id}.${extension}`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
+
     } catch (err) {
+      console.error("Download failed:", err);
+      // LAST RESORT: Open in new tab
       if (item.type !== 'AUDIT') window.open(item.data, '_blank');
     }
   };
