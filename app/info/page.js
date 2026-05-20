@@ -76,7 +76,7 @@ export default function InfoHub() {
               <h3 className="text-xs font-bold text-zinc-200 mb-1">Smart Contract Architecture</h3>
               <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">The MasoMindV2 router is an immutable gateway deployed on Celo Mainnet. It utilizes strict parameter decoding to verify the precise stablecoin, amount, and intent type before authorizing API access.</p>
               <div className="bg-zinc-900 p-2 rounded border border-zinc-800 text-[9px] font-mono text-emerald-500/70">
-                Contract: 0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717
+                Contract: 0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f
               </div>
             </div>
 
