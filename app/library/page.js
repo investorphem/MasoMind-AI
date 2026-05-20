@@ -1,14 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock, FileText, Image as ImageIcon, Music, Video, Download, Trash2, Code, Loader2, XCircle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Clock, FileText, Image as ImageIcon, Music, Video, Download, Trash2, Code, Loader2, XCircle, PlayCircle, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAccount } from 'wagmi';
 
 export default function LibraryPage() {
   const { address } = useAccount();
   const [activeTab, setActiveTab] = useState('MEDIA');
-  const [mediaFilter, setMediaFilter] = useState('ALL'); // Restored Sub-category filter
+  const [mediaFilter, setMediaFilter] = useState('ALL');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState(null);
@@ -28,14 +28,13 @@ export default function LibraryPage() {
         if (data.transactions) {
           const SEVEN_DAYS_MS = 604800000;
           const now = Date.now();
-          
-          // Fetch deleted IDs so they don't reappear on reload
+
           const deletedIds = JSON.parse(localStorage.getItem('masomind_deleted_assets') || '[]');
 
           const validAssets = data.transactions
             .filter(tx => (now - new Date(tx.created_at).getTime()) < SEVEN_DAYS_MS)
-            .filter(tx => tx.status === 'COMPLETED' && tx.result_data) // 🚀 FIX: ONLY show successful AI products!
-            .filter(tx => !deletedIds.includes(tx.tx_hash)) // 🚀 FIX: Hide locally deleted items
+            .filter(tx => tx.status === 'COMPLETED' && tx.result_data) 
+            .filter(tx => !deletedIds.includes(tx.tx_hash)) 
             .map(tx => ({
               id: tx.tx_hash,
               type: tx.service_type,
@@ -57,7 +56,6 @@ export default function LibraryPage() {
     fetchVaultAssets();
   }, [address]);
 
-  // Handle Deleting (hides it from the UI since the Ledger retains the immutable database record)
   const deleteItem = (id) => {
     setItems(prev => prev.filter(item => item.id !== id));
     const deletedIds = JSON.parse(localStorage.getItem('masomind_deleted_assets') || '[]');
@@ -65,59 +63,56 @@ export default function LibraryPage() {
     if (selectedAsset?.id === id) setSelectedAsset(null);
   };
 
-  // 🚀 BULLETPROOF MINIPAY FIX: No Blob URLs!
+  // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
   const downloadAsset = async (item) => {
     try {
-      if (item.type === 'IMAGE' && item.data.startsWith('http')) {
-        window.open(item.data, '_blank');
-        return;
-      }
-
       if (item.type === 'AUDIT') {
         if (navigator.share) {
           await navigator.share({ title: 'MasoMind Security Audit', text: item.data });
         } else {
-          alert("Please use the 'Copy' button in the report viewer to save this audit.");
+          navigator.clipboard.writeText(item.data);
+          alert("Audit copied to clipboard!");
         }
         return;
       }
 
-      if (item.type === 'MUSIC' || item.type === 'VIDEO') {
-        try {
-          const response = await fetch(item.data);
-          const rawBlob = await response.blob();
-          const extension = item.type === 'MUSIC' ? 'mp3' : 'mp4';
-          const mimeType = item.type === 'MUSIC' ? 'audio/mp3' : 'video/mp4';
-          const file = new File([rawBlob], `MasoMind-${item.type}.${extension}`, { type: mimeType });
+      // Create a hidden form to submit the Base64 data directly to the Next.js server
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/download';
 
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: `MasoMind ${item.type}` });
-            return;
-          }
-        } catch (e) {
-          console.warn("Native share blocked or unavailable:", e);
-        }
-        
-        alert(`To save this ${item.type.toLowerCase()}, please long-press the media player above and select "Save" or "Download".`);
-      }
+      const dataInput = document.createElement('input');
+      dataInput.type = 'hidden';
+      dataInput.name = 'fileData';
+      dataInput.value = item.data;
+      form.appendChild(dataInput);
+
+      const typeInput = document.createElement('input');
+      typeInput.type = 'hidden';
+      typeInput.name = 'fileType';
+      typeInput.value = item.type;
+      form.appendChild(typeInput);
+
+      document.body.appendChild(form);
+      form.submit(); // Forces native mobile download via server headers
+      document.body.removeChild(form);
+
     } catch (err) {
       console.error("Download action failed:", err);
-      alert("Browser restricted download. Please long-press the media to save it.");
+      alert("Failed to initiate download.");
     }
   };
 
-  // Filter Logic
   const allMediaItems = items.filter(i => i.category === 'MEDIA');
   const filteredMediaItems = mediaFilter === 'ALL' 
     ? allMediaItems 
     : allMediaItems.filter(i => i.type === mediaFilter);
-    
+
   const documentItems = items.filter(i => i.category === 'DOCUMENT');
 
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
 
-      {/* Header */}
       <header className="flex items-center justify-between py-4 mb-2 border-b border-white/5 pb-4 max-w-md mx-auto w-full">
         <Link href="/" className="flex items-center gap-2 p-2 bg-zinc-900/80 rounded-full border border-zinc-800 hover:bg-zinc-800 transition-colors">
           <ArrowLeft className="w-4 h-4 text-emerald-400" />
@@ -130,7 +125,6 @@ export default function LibraryPage() {
         </div>
       </header>
 
-      {/* Main Navigation Tabs */}
       <div className="w-full max-w-md mx-auto mb-4 flex gap-2 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl">
         <button 
           onClick={() => setActiveTab('MEDIA')} 
@@ -146,7 +140,6 @@ export default function LibraryPage() {
         </button>
       </div>
 
-      {/* 🚀 RESTORED: Sub-Filters for Media */}
       {activeTab === 'MEDIA' && allMediaItems.length > 0 && (
         <div className="w-full max-w-md mx-auto mb-6 flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
           {['ALL', 'IMAGE', 'MUSIC', 'VIDEO'].map(filter => (
@@ -161,7 +154,6 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* Main Vault Content */}
       <main className="flex-1 w-full max-w-md mx-auto pb-8">
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -169,7 +161,6 @@ export default function LibraryPage() {
           </div>
         ) : (
           <>
-            {/* EMPTY STATES */}
             {activeTab === 'MEDIA' && filteredMediaItems.length === 0 && (
               <div className="flex flex-col items-center justify-center h-64 text-center glass-panel rounded-3xl border border-zinc-800/50 p-8 mt-4">
                 <ImageIcon className="w-10 h-10 text-zinc-600 mb-4" />
@@ -186,7 +177,6 @@ export default function LibraryPage() {
               </div>
             )}
 
-            {/* MEDIA GRID VIEW */}
             {activeTab === 'MEDIA' && filteredMediaItems.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
                 {filteredMediaItems.map(item => (
@@ -198,7 +188,7 @@ export default function LibraryPage() {
                     <div className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded border border-white/10 text-[9px] font-mono font-bold text-emerald-400 tracking-wider">
                       {item.type}
                     </div>
-                    
+
                     {item.type === 'IMAGE' && <img src={item.data} className="w-full h-full object-cover" loading="lazy" />}
                     {item.type === 'VIDEO' && (
                       <div className="w-full h-full relative">
@@ -220,7 +210,6 @@ export default function LibraryPage() {
               </div>
             )}
 
-            {/* DOCUMENTS LIST VIEW */}
             {activeTab === 'DOCUMENT' && documentItems.map(item => (
               <div key={item.id} className="glass-panel rounded-3xl border border-zinc-800/80 p-5 space-y-4 mb-4 shadow-lg bg-zinc-900/40">
                 <div className="flex items-center justify-between border-b border-zinc-800/50 pb-3">
@@ -261,12 +250,10 @@ export default function LibraryPage() {
         )}
       </main>
 
-      {/* EXPANDED ASSET MODAL */}
       {selectedAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
           <div className="w-full max-w-md max-h-[95vh] flex flex-col rounded-3xl border border-zinc-700 shadow-2xl overflow-hidden relative bg-[#09090b]">
-            
-            {/* Modal Header */}
+
             <div className="flex justify-between items-center p-4 border-b border-zinc-800 bg-zinc-900/50">
               <div className="flex items-center gap-2">
                 {selectedAsset.type === 'IMAGE' && <ImageIcon className="w-4 h-4 text-emerald-400" />}
@@ -279,7 +266,6 @@ export default function LibraryPage() {
               </button>
             </div>
 
-            {/* Modal Media Content */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col items-center justify-center min-h-[300px] bg-zinc-950/50">
               {selectedAsset.type === 'IMAGE' && (
                 <img src={selectedAsset.data} alt="Expanded Asset" className="w-full rounded-2xl shadow-xl border border-zinc-800" />
@@ -297,12 +283,11 @@ export default function LibraryPage() {
               )}
             </div>
 
-            {/* Modal Actions */}
             <div className="p-4 border-t border-zinc-800 bg-zinc-900/80 space-y-4">
               <p className="text-[11px] text-zinc-400 italic leading-relaxed px-1 max-h-20 overflow-y-auto custom-scrollbar">
                 "{selectedAsset.prompt}"
               </p>
-              
+
               <div className="flex gap-2">
                 <button 
                   onClick={() => downloadAsset(selectedAsset)}
@@ -310,7 +295,7 @@ export default function LibraryPage() {
                 >
                   <Download className="w-4 h-4" /> Download
                 </button>
-                
+
                 <button 
                   onClick={() => deleteItem(selectedAsset.id)}
                   className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all border border-red-500/20 flex items-center justify-center"
