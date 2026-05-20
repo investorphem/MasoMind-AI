@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
-import { createPublicClient, custom, http, parseUnits, formatUnits } from 'viem'; // 🚀 Added http here
+import { createPublicClient, custom, http, parseUnits, formatUnits } from 'viem'; 
 import { celo } from 'viem/chains';
 import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
@@ -64,13 +64,21 @@ export default function MasoMindApp() {
   const [placeholderText, setPlaceholderText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 🚀 PREMIUM NOTIFICATION STATE
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
   const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+
+  // 🚀 CUSTOM TOAST FUNCTION
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
+  };
 
   // Token Balance Fetching
   useEffect(() => {
     if (!address) return;
     const fetchBalances = async () => {
-      // 🚀 FIX: Using HTTP RPC instead of injected provider so it works safely on ANY browser
       const publicClient = createPublicClient({ 
         chain: celo, 
         transport: http() 
@@ -145,6 +153,7 @@ export default function MasoMindApp() {
     if (!resultData) return;
     navigator.clipboard.writeText(resultData);
     setCopied(true);
+    showToast("Audit copied to clipboard!", "success");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -156,7 +165,7 @@ export default function MasoMindApp() {
           await navigator.share({ title: 'MasoMind Security Audit', text: resultData });
         } else {
           navigator.clipboard.writeText(resultData);
-          alert("Audit copied to clipboard!");
+          showToast("Audit copied to clipboard!", "success");
         }
         return;
       }
@@ -183,7 +192,7 @@ export default function MasoMindApp() {
 
     } catch (err) {
       console.error("Download action failed:", err);
-      alert("Failed to initiate download.");
+      showToast("Failed to initiate download.", "error");
     }
   };
 
@@ -254,7 +263,6 @@ export default function MasoMindApp() {
     const amountToCharge = parseUnits(priceStr, token.decimals);
 
     try {
-      // 🚀 FIX: Also use HTTP RPC for pre-flight read checks
       const publicClient = createPublicClient({ 
         chain: celo, 
         transport: http() 
@@ -340,19 +348,32 @@ export default function MasoMindApp() {
         body: JSON.stringify({ txHash: pendingState.hash, userAddress: address })
       });
       if (res.ok) {
-        alert('Refund request submitted to Treasury. Check Ledger for status.');
+        showToast('Refund request submitted to Treasury.', 'success');
         clearPendingState();
       } else {
-        alert('Failed to request refund. It may have already been processed.');
+        showToast('Failed to request. It may have already been processed.', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Network error while requesting refund.', 'error');
     }
     setStatus('');
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
+    <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b] relative">
+
+      {/* 🚀 PREMIUM TOAST NOTIFICATION UI */}
+      {toast.visible && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ease-out animate-in fade-in slide-in-from-top-4 w-11/12 max-w-sm">
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
+            toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-400' : 'bg-red-950/90 border-red-500/40 text-red-400'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
+            <p className="text-xs font-bold tracking-wide leading-relaxed">{toast.message}</p>
+          </div>
+        </div>
+      )}
 
       <header className="flex flex-col gap-4 py-4 px-2 mb-2 border-b border-white/5 pb-4">
         <div className="flex justify-between items-center">
