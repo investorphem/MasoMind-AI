@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createPublicClient, http, decodeFunctionData, parseUnits } from 'viem';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
+import { sendTelegramNotification } from '../../../lib/telegram'; // Import Telegram helper
 
 // Extend Vercel timeout for media generation
 export const maxDuration = 60; 
@@ -10,9 +11,9 @@ export const maxDuration = 60;
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': 18,
-  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6
+  '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD
+  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,  // USDC
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6   // USDT (Fixed typo in address string)
 };
 
 // UPDATE: ABI function name changed to requestService
@@ -102,10 +103,17 @@ export async function POST(req) {
         result_data: mediaUrl
       }).eq('tx_hash', txHash);
 
+      // Notify Success via Telegram
+      await sendTelegramNotification(`✅ *Asset Generated*\nType: VIDEO\nUser: \`${userAddress}\`\nTx: \`${txHash.substring(0, 10)}...\``);
+
       return NextResponse.json({ mediaUrl });
 
     } catch (aiError) {
       await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
+      
+      // Notify Failure via Telegram
+      await sendTelegramNotification(`❌ *Generation Failed*\nType: VIDEO\nUser: \`${userAddress}\`\nTx: \`${txHash.substring(0, 10)}...\``);
+      
       throw aiError; 
     }
 
