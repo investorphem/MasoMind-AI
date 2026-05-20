@@ -6,7 +6,7 @@ import { supabase } from '../../../lib/supabase';
 import { sendTelegramNotification } from '../../../lib/telegram';
 
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
-const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; // 🚨 MUST BE SET IN VERCEL
+const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD
@@ -39,10 +39,7 @@ const DELIVERY_ABI = [{
 export async function POST(req) {
   try {
     const { prompt, txHash } = await req.json();
-
-    if (!prompt || !txHash) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
-    }
+    if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
     const publicClient = createPublicClient({ chain: celo, transport: http() });
 
@@ -63,10 +60,18 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Insert PENDING to DB
-    await supabase.from('transactions').insert([{
-      tx_hash: txHash, prompt: prompt, service_type: 'AUDIT', status: 'PENDING', user_address: userAddress.toLowerCase()
-    }]);
+    // 2. Insert PENDING to DB (with token_address included)
+    const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
+    if (!existingTx) {
+      await supabase.from('transactions').insert([{
+        tx_hash: txHash, 
+        prompt: prompt, 
+        service_type: 'AUDIT', 
+        status: 'PENDING', 
+        user_address: userAddress.toLowerCase(),
+        token_address: paidToken.toLowerCase() // 🚀 CRITICAL FOR AUTO-REFUND
+      }]);
+    }
 
     // 3. AI Generation
     const apiKey = process.env.GEMINI_API_KEY;
@@ -79,7 +84,7 @@ export async function POST(req) {
     const aiData = await aiResponse.json();
     const auditReport = aiData.candidates[0].content.parts[0].text;
 
-    // 4. 🚀 AUTONOMOUS DELIVERY (The Agent acts!)
+    // 4. 🚀 AUTONOMOUS DELIVERY
     const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
     const agentClient = createWalletClient({ account, chain: celo, transport: http() });
 
@@ -102,6 +107,7 @@ export async function POST(req) {
   } catch (error) {
     console.error("Audit API Error:", error);
     await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
+    await sendTelegramNotification(`❌ *Audit Generation Failed*`);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
