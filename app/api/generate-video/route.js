@@ -6,15 +6,18 @@ import { supabase } from '../../../lib/supabase';
 // Extend Vercel timeout for media generation
 export const maxDuration = 60; 
 
-const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
+// UPDATE: Point to your new V2 Contract Address
+const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': 18,
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a882483d5e': 6
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6
 };
 
+// UPDATE: ABI function name changed to requestService
 const ABI = [{
-  "name": "executeService",
+  "name": "requestService",
   "type": "function",
   "stateMutability": "nonpayable",
   "inputs": [
@@ -57,6 +60,7 @@ export async function POST(req) {
       if (paidServiceType !== 'VIDEO') return NextResponse.json({ error: "Invalid routing" }, { status: 403 });
 
     } catch (err) {
+      console.error("Blockchain verification error:", err);
       return NextResponse.json({ error: "Verification failed" }, { status: 403 });
     }
 
@@ -88,18 +92,16 @@ export async function POST(req) {
       let mediaUrl = '';
       if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
          const base64Video = data.candidates[0].content.parts[0].inlineData.data;
-         // Format as a data URI so the frontend <video> tag can play it instantly
          mediaUrl = `data:video/mp4;base64,${base64Video}`;
       } else {
          throw new Error("API limits reached or invalid generation");
       }
 
-      // Mark as COMPLETED in the vault AND save the generated video payload
       await supabase.from('transactions').update({ 
         status: 'COMPLETED',
         result_data: mediaUrl
       }).eq('tx_hash', txHash);
-      
+
       return NextResponse.json({ mediaUrl });
 
     } catch (aiError) {
@@ -108,6 +110,7 @@ export async function POST(req) {
     }
 
   } catch (error) {
+    console.error("Video API Error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
