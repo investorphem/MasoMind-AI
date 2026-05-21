@@ -1,5 +1,48 @@
 import { NextResponse } from 'next/server';
 
+// ---------------------------------------------------------
+// ADD THIS GET METHOD (For URLs like Together AI Images)
+// ---------------------------------------------------------
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const fileUrl = searchParams.get('url');
+    const fileType = searchParams.get('type') || 'IMAGE';
+
+    if (!fileUrl) {
+      return new NextResponse("Missing file URL", { status: 400 });
+    }
+
+    const response = await fetch(fileUrl);
+    if (!response.ok) throw new Error("Failed to fetch from provider");
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    let ext = 'png';
+    let mime = 'image/png';
+
+    // THE MAGIC TRICK: "attachment" forces the OS to download natively
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        'Content-Disposition': `attachment; filename="MasoMind-${fileType}-${Date.now()}.${ext}"`,
+        'Content-Type': mime,
+        'Content-Length': buffer.length.toString(),
+        'Cache-Control': 'no-cache'
+      },
+    });
+
+  } catch (error) {
+    console.error("GET Download Proxy Error:", error);
+    return new NextResponse("Failed to process download", { status: 500 });
+  }
+}
+
+// ---------------------------------------------------------
+// KEEP YOUR EXISTING POST METHOD EXACTLY AS IT IS BELOW
+// (This continues to handle your Base64 Music/Video)
+// ---------------------------------------------------------
 export async function POST(req) {
   try {
     const formData = await req.formData();
