@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-// 🚀 Added "fallback" to your imports here:
 import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
@@ -9,12 +8,12 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
-// 🚀 ENTERPRISE RPC CONFIGURATION (Defined globally)
+// 🚀 ENTERPRISE RPC CONFIGURATION
 const celoTransports = fallback([
-  http('https://forno.celo.org'),           // The default, sometimes slow
-  http('https://rpc.celo-community.org'),   // Community backup
-  http('https://1rpc.io/celo'),             // High-performance aggregator
-  http('https://celo.drpc.org')             // Decentralized RPC
+  http('https://forno.celo.org'),
+  http('https://rpc.celo-community.org'),
+  http('https://1rpc.io/celo'),
+  http('https://celo.drpc.org')
 ]);
 
 const TOKENS = {
@@ -51,10 +50,8 @@ export async function POST(req) {
   try {
     const { prompt, txHash } = await req.json();
     if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
-    
-    globalTxHash = txHash;
 
-    // 🚀 Updated publicClient to use the fallback array
+    globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
     // 1. Verify Transaction
@@ -87,10 +84,10 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. ENTERPRISE AI GENERATION (Smart Routing + Flux)
+    // 3. ENTERPRISE AI GENERATION
     const togetherApiKey = process.env.TOGETHER_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    
+
     if (!togetherApiKey) throw new Error("TOGETHER_API_KEY is missing");
 
     let enhancedPrompt = prompt; 
@@ -102,12 +99,10 @@ export async function POST(req) {
                 contents: [{
                     parts: [{
                         text: `You are a master Midjourney and Flux prompt engineer. A user wants to generate an image based on this input: "${prompt}". 
-                        
                         First, determine the intent:
                         - If it's a logo or UI, write a prompt emphasizing minimalist, modern vector graphics, clean background, abstract tech vibes. Do not include literal people.
                         - If it's a photograph, write a prompt emphasizing 8k resolution, cinematic lighting, photorealism, shot on 35mm lens.
                         - If it's an illustration, write a prompt emphasizing vibrant colors, detailed line art, digital painting style.
-                        
                         Return ONLY the highly detailed, professional image generation prompt. No conversational text. No explanations.`
                     }]
                 }]
@@ -147,19 +142,52 @@ export async function POST(req) {
     }
 
     const aiData = await aiResponse.json();
-    const imageUrl = aiData.data[0].url;
+    const temporaryImageUrl = aiData.data[0].url;
 
-    if (!imageUrl) throw new Error("Failed to extract image URL from provider");
+    if (!temporaryImageUrl) throw new Error("Failed to extract image URL from provider");
 
-    // 4. NON-BLOCKING DELIVERY
+    // --- 🚀 PERMANENT CLOUD STORAGE FIX ---
+    let permanentImageUrl = temporaryImageUrl; // Fallback just in case
+
+    try {
+        // A. Download the image from Together AI securely
+        const imgRes = await fetch(temporaryImageUrl);
+        if (!imgRes.ok) throw new Error("Failed to fetch temporary image");
+        const imgBuffer = await imgRes.arrayBuffer();
+
+        // B. Generate a clean, unique filename
+        const fileName = `img_${Date.now()}_${txHash.substring(0, 6)}.png`;
+
+        // C. Upload to your Supabase "vault" bucket
+        const { error: uploadError } = await supabase.storage
+            .from('vault')
+            .upload(fileName, imgBuffer, {
+                contentType: 'image/png',
+                upsert: false
+            });
+
+        if (uploadError) throw uploadError;
+
+        // D. Retrieve the permanent public URL
+        const { data: publicUrlData } = supabase.storage
+            .from('vault')
+            .getPublicUrl(fileName);
+
+        permanentImageUrl = publicUrlData.publicUrl;
+    } catch (storageError) {
+        console.error("Supabase Storage Error:", storageError);
+        // If storage fails, we still have the temporary URL so the user isn't stuck
+    }
+    // ----------------------------------------
+
+    // 4. NON-BLOCKING DELIVERY (Using the Permanent URL)
     await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: imageUrl })
+      .update({ status: 'COMPLETED', result_data: permanentImageUrl })
       .eq('tx_hash', txHash);
 
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-        // 🚀 Updated agentClient to use the fallback array
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
         const summary = `Image Generated: ${prompt.substring(0, 15)}...`;
 
@@ -169,21 +197,22 @@ export async function POST(req) {
           functionName: 'deliverResult',
           args: [userAddress, summary]
         });
-        await sendTelegramNotification(`✅ *Premium Image Delivered On-Chain*`);
+        await sendTelegramNotification(`✅ *Premium Image Secured in Vault & Delivered On-Chain*`);
       } catch (err) {
         console.error("Background blockchain delivery failed:", err);
       }
     })();
 
-    return NextResponse.json({ imageUrl });
+    // Return the Permanent URL to the frontend
+    return NextResponse.json({ imageUrl: permanentImageUrl });
 
   } catch (error) {
     console.error("Image API Error:", error);
-    
+
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     }
-    
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
