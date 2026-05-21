@@ -77,10 +77,48 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. 🚀 ENTERPRISE AI GENERATION (Flux via Together AI)
+        // 3. 🚀 ENTERPRISE AI GENERATION (Smart Routing + Flux)
     const togetherApiKey = process.env.TOGETHER_API_KEY;
-    if (!togetherApiKey) throw new Error("TOGETHER_API_KEY is missing in Vercel");
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    
+    if (!togetherApiKey) throw new Error("TOGETHER_API_KEY is missing");
 
+    // --- STEP 3A: The Analyzer (Smart Prompt Enhancement) ---
+    // We use a lightweight Gemini call to analyze what the user actually wants and format it perfectly for Flux.
+    let enhancedPrompt = prompt; // Fallback to original prompt
+    try {
+        const analyzeResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `You are a master Midjourney and Flux prompt engineer. A user wants to generate an image based on this input: "${prompt}". 
+                        
+                        First, determine the intent:
+                        - If it's a logo or UI, write a prompt emphasizing minimalist, modern vector graphics, clean background, abstract tech vibes. Do not include literal people.
+                        - If it's a photograph, write a prompt emphasizing 8k resolution, cinematic lighting, photorealism, shot on 35mm lens.
+                        - If it's an illustration, write a prompt emphasizing vibrant colors, detailed line art, digital painting style.
+                        
+                        Return ONLY the highly detailed, professional image generation prompt. No conversational text. No explanations.`
+                    }]
+                }]
+            })
+        });
+
+        if (analyzeResponse.ok) {
+            const analyzeData = await analyzeResponse.json();
+            if (analyzeData.candidates?.[0]?.content?.parts?.[0]?.text) {
+                // Use the masterfully crafted prompt instead
+                enhancedPrompt = analyzeData.candidates[0].content.parts[0].text.trim();
+                console.log("Original:", prompt, "-> Enhanced:", enhancedPrompt);
+            }
+        }
+    } catch (e) {
+        console.warn("Analyzer skipped, using raw prompt:", e.message);
+    }
+
+    // --- STEP 3B: The Generation (Flux via Together AI) ---
     const aiResponse = await fetch('https://api.together.xyz/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -88,8 +126,8 @@ export async function POST(req) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "black-forest-labs/FLUX.1-schnell", // Uses Flux Schnell for speed + high quality
-        prompt: prompt,
+        model: "black-forest-labs/FLUX.1-schnell",
+        prompt: enhancedPrompt, // Feed Flux the perfected prompt
         width: 1024,
         height: 1024,
         steps: 4,
