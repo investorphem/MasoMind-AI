@@ -10,7 +10,7 @@ import ReactMarkdown from 'react-markdown';
 
 // Define the stablecoins on Celo Mainnet
 const TOKENS = {
-  cUSD: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18, symbol: 'cUSD' },
+  USDm: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18, symbol: 'USDm' },
   USDC: { address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', decimals: 6, symbol: 'USDC' },
   USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6, symbol: 'USDT' }
 };
@@ -83,7 +83,7 @@ export default function MasoMindApp() {
         chain: celo, 
         transport: http() 
       });
-      
+
       const newBalances = { ...balances };
 
       for (const tokenKey of Object.keys(TOKENS)) {
@@ -157,7 +157,7 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-      const downloadAsset = async () => {
+  const downloadAsset = async () => {
     if (!resultData) return;
     try {
       // 1. Text/Audit Download
@@ -174,7 +174,7 @@ export default function MasoMindApp() {
       // 2. 🚀 SUPABASE NATIVE DOWNLOAD (Bypasses MiniPay WebView Blocks)
       if (mode === 'IMAGE') {
         let finalUrl = resultData;
-        
+
         // If the image is in your Supabase Vault, append their native download command
         if (finalUrl.includes('supabase.co')) {
           finalUrl = finalUrl.includes('?') 
@@ -193,7 +193,7 @@ export default function MasoMindApp() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         return;
       }
 
@@ -518,22 +518,11 @@ export default function MasoMindApp() {
             {mode === 'IMAGE' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square group">
                 <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
-                <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px] relative z-10" />
-                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
-                  <Download className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            )}
-
-                        {mode === 'IMAGE' && (
-              <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square group">
-                <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full mix-blend-overlay"></div>
                 <img 
                   src={resultData || "/placeholder-premium.png"} 
                   alt="AI Canvas" 
                   className="w-full h-full object-cover rounded-[22px] relative z-10"
                   onError={(e) => {
-                    // Prevent broken link icons if an old Together AI URL expires
                     e.target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1024"; 
                   }}
                 />
@@ -547,6 +536,33 @@ export default function MasoMindApp() {
               </div>
             )}
 
+            {mode === 'AUDIT' && (
+              <div className="w-full flex flex-col h-[450px] rounded-3xl glass-panel border border-zinc-800/50 shadow-2xl relative overflow-hidden bg-zinc-950/90">
+                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
+                  <div className="flex items-center gap-2">
+                    <Code className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h3 className="text-xs font-bold text-zinc-100 tracking-wider">SECURITY REPORT</h3>
+                      <p className="text-[9px] text-zinc-500 font-mono">Gemini Flash Analysis</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={copyToClipboard} 
+                      className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors text-xs font-medium text-zinc-300"
+                    >
+                      {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button 
+                      onClick={downloadAsset} 
+                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors text-xs font-medium text-emerald-400"
+                    >
+                      <Download className="w-3.5 h-3.5" /> MD
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
                   <div className="prose prose-invert prose-emerald max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-headings:text-zinc-100 prose-a:text-emerald-400 prose-code:text-emerald-300 text-sm leading-relaxed">
                     <ReactMarkdown>{resultData}</ReactMarkdown>
@@ -555,13 +571,14 @@ export default function MasoMindApp() {
               </div>
             )}
 
-                        {mode === 'MUSIC' && (
+            {mode === 'MUSIC' && (
               <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 shadow-2xl bg-gradient-to-b from-zinc-900 to-zinc-950">
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                   <Music className="w-12 h-12 text-emerald-400" />
                 </div>
-                {/* 🚀 CRITICAL FIX: Adding key forces the player to reload when media arrives */}
-                <audio key={resultData} controls className="w-full" src={resultData}>
+                <audio key={resultData} controls className="w-full text-emerald-500" preload="auto">
+                  <source src={resultData} type="audio/mpeg" />
+                  <source src={resultData} type="audio/wav" />
                   Your browser does not support the audio element.
                 </audio>
                 <button onClick={downloadAsset} className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl text-xs font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2">
