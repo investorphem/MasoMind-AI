@@ -191,11 +191,10 @@ export default function MasoMindApp() {
         return;
       }
 
-                  // 3. 🚀 DIRECT HTTP URL DOWNLOAD (Fixes Vercel 4.5MB memory crashes)
+                  // 3. 🚀 THE MAGIC BULLET FOR WEBVIEW DOWNLOADS
       if (resultData.startsWith('http')) {
-        // Opening in a new tab forces mobile wallets to hand the file to the OS Download Manager
-        window.open(resultData, '_blank');
-        showToast("Opening secure download link...", "success");
+        window.location.href = `/api/download?url=${encodeURIComponent(resultData)}&action=download`;
+        showToast("Download started...", "success");
         return;
       }
 
