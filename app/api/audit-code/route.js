@@ -81,16 +81,20 @@ export async function POST(req) {
       body: JSON.stringify({ contents: [{ parts: [{ text: `Analyze this code: ${prompt}` }] }] })
     });
 
+    // Check if the AI request actually succeeded
+    if (!aiResponse.ok) {
+        const errorData = await aiResponse.json();
+        throw new Error(`Gemini API Error: ${errorData.error?.message || aiResponse.statusText}`);
+    }
+
     const aiData = await aiResponse.json();
     const auditReport = aiData.candidates[0].content.parts[0].text;
 
     // 4. NON-BLOCKING DELIVERY
-    // We update DB to COMPLETED immediately so the user gets their result.
     await supabase.from('transactions')
       .update({ status: 'COMPLETED', result_data: auditReport })
       .eq('tx_hash', txHash);
 
-    // Blockchain delivery runs in the background
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
@@ -109,11 +113,11 @@ export async function POST(req) {
       }
     })();
 
-    // 5. Return success immediately
     return NextResponse.json({ report: auditReport });
 
   } catch (error) {
     console.error("Audit API Error:", error);
-    return NextResponse.json({ error: "Generation failed, check logs" }, { status: 500 });
+    // Return the EXACT error message so you can see why it's failing
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
