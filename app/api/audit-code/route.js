@@ -75,7 +75,8 @@ export async function POST(req) {
 
     // 3. AI Generation
     const apiKey = process.env.GEMINI_API_KEY;
-    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    // 🚀 Swapped to 1.5-flash to bypass your temporary quota limit on 2.0-flash
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: `Analyze this code: ${prompt}` }] }] })
@@ -100,7 +101,7 @@ export async function POST(req) {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: http() });
         const summary = `Audit Completed: ${prompt.substring(0, 15)}...`;
-        
+
         await agentClient.writeContract({
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
@@ -117,7 +118,12 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Audit API Error:", error);
-    // Return the EXACT error message so you can see why it's failing
+    
+    // 🚀 CRITICAL: Update DB to FAILED so the auto-refund engine allows the user to get their money back
+    if (req.body && txHash) {
+        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
+    }
+    
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
