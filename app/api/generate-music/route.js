@@ -84,11 +84,12 @@ export async function POST(req) {
       }]);
     }
 
-    // 🚀 ENTERPRISE AUDIO ENGINE (Meta MusicGen via Hugging Face)
+        // 🚀 ENTERPRISE AUDIO ENGINE (Meta MusicGen via Hugging Face)
     const hfApiKey = process.env.HUGGINGFACE_API_KEY;
     if (!hfApiKey) throw new Error("HUGGINGFACE_API_KEY is missing");
 
-    const response = await fetch("https://api-inference.huggingface.co/models/facebook/musicgen-small", {
+    // 🚀 VERCEL DNS BUG FIX: Use the new Cloudflare-backed HF Router
+    const response = await fetch("https://router.huggingface.co/hf-inference/models/facebook/musicgen-small", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${hfApiKey}`,
