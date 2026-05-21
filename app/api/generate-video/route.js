@@ -71,7 +71,7 @@ export async function POST(req) {
         service_type: 'VIDEO', 
         status: 'PENDING', 
         user_address: userAddress.toLowerCase(),
-        token_address: paidToken.toLowerCase() // 🚀 Mandatory for Auto-Refund
+        token_address: paidToken.toLowerCase()
       }]);
     }
 
@@ -86,35 +86,55 @@ export async function POST(req) {
       })
     });
 
+    // Explicitly catch Google API errors (like Quota Exceeded)
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Google API Error: ${errorData.error?.message || response.statusText}`);
+    }
+
     const data = await response.json();
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.inlineData) throw new Error("Video generation failed");
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.inlineData) throw new Error("Video generation failed to return media data");
 
     const mediaUrl = `data:video/mp4;base64,${data.candidates[0].content.parts[0].inlineData.data}`;
 
-    // 4. 🚀 AUTONOMOUS DELIVERY (Agent signing to the contract)
-    const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-    const agentClient = createWalletClient({ account, chain: celo, transport: http() });
-
-    const deliveryHash = await agentClient.writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: DELIVERY_ABI,
-      functionName: 'deliverResult',
-      args: [userAddress, mediaUrl]
-    });
-
-    // 5. Finalize DB
+    // 4. NON-BLOCKING DELIVERY
+    // Save the video to the DB immediately and mark COMPLETED
     await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: mediaUrl, tx_hash: deliveryHash })
+      .update({ status: 'COMPLETED', result_data: mediaUrl })
       .eq('tx_hash', txHash);
 
-    await sendTelegramNotification(`✅ *Video Delivered On-Chain*\nTx: \`${deliveryHash.substring(0, 10)}...\``);
+    // Run Blockchain delivery in the background
+    (async () => {
+      try {
+        const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
+        const agentClient = createWalletClient({ account, chain: celo, transport: http() });
+        
+        // Blockchain cannot handle massive base64 strings. Send a summary instead.
+        const summary = `Video Generated: ${prompt.substring(0, 15)}...`;
 
+        await agentClient.writeContract({
+          address: CONTRACT_ADDRESS,
+          abi: DELIVERY_ABI,
+          functionName: 'deliverResult',
+          args: [userAddress, summary]
+        });
+        
+        await sendTelegramNotification(`✅ *Video Delivered On-Chain*`);
+      } catch (err) {
+        console.error("Background blockchain delivery failed:", err);
+      }
+    })();
+
+    // Return the video immediately to the UI
     return NextResponse.json({ mediaUrl });
 
   } catch (error) {
     console.error("Video API Error:", error);
+    
+    // Ensure the database registers the failure so the user can request a refund
     await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
-    await sendTelegramNotification(`❌ *Video Generation Failed*`);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    
+    // Return the actual error message so your UI knows what happened
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
