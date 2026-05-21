@@ -574,13 +574,13 @@ export default function MasoMindApp() {
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                   <Music className="w-12 h-12 text-emerald-400" />
                 </div>
-                                {/* 🚀 DIRECT PLAYBACK FIX: Allows browsers to chunk audio properly */}
+                                {/* 🚀 PROXY STREAM FIX: Bypasses CORS and streams raw bytes to the player */}
                 <audio 
                   key={resultData} 
                   controls 
                   autoPlay 
                   className="w-full text-emerald-500" 
-                  src={resultData}
+                  src={resultData.startsWith('http') ? `/api/download?url=${encodeURIComponent(resultData)}&action=stream` : resultData}
                 >
                   Your browser does not support the audio element.
                 </audio>
@@ -592,13 +592,13 @@ export default function MasoMindApp() {
 
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video group overflow-hidden">
-                                {/* 🚀 DIRECT PLAYBACK FIX: Allows browsers to chunk video properly */}
+                                {/* 🚀 PROXY STREAM FIX: Bypasses CORS and streams raw bytes to the player */}
                 <video 
                   key={resultData}
                   controls 
                   autoPlay 
                   className="w-full h-full object-cover rounded-[22px] relative z-10" 
-                  src={resultData} 
+                  src={resultData.startsWith('http') ? `/api/download?url=${encodeURIComponent(resultData)}&action=stream` : resultData} 
                 />
                 <button onClick={downloadAsset} className="absolute top-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full shadow-lg transition-all flex items-center justify-center">
                   <Download className="w-5 h-5 text-white" />
