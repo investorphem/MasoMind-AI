@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, fallback } from 'viem';
+// 🚀 ADDED 'formatUnits' to decode the exact crypto amount for Telegram
+import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, formatUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
@@ -10,7 +11,6 @@ export const maxDuration = 60;
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
-// 🚀 ENTERPRISE RPC CONFIGURATION
 const celoTransports = fallback([
   http('https://forno.celo.org'),
   http('https://rpc.celo-community.org'),
@@ -18,10 +18,11 @@ const celoTransports = fallback([
   http('https://celo.drpc.org')
 ]);
 
+// Added symbols so Telegram knows exactly which coin was spent
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': 18,
-  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6
+  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'cUSD' },
+  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }
 };
 
 const REQUEST_ABI = [{
@@ -46,7 +47,6 @@ const DELIVERY_ABI = [{
   ]
 }];
 
-// High-fidelity cinematic MP4 loops for the Video Engine
 const CINEMATIC_VIDEOS = {
   cyberpunk: "https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-traffic-in-the-rain-31627-large.mp4",
   nature: "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beautiful-green-forest-4375-large.mp4",
@@ -57,6 +57,7 @@ const CINEMATIC_VIDEOS = {
 
 export async function POST(req) {
   let globalTxHash = null; 
+  let paymentDetails = null; // Used to pass data to the failure notification
 
   try {
     const { prompt, txHash } = await req.json();
@@ -75,13 +76,19 @@ export async function POST(req) {
     const { args } = decodeFunctionData({ abi: REQUEST_ABI, data: transaction.input });
     const [paidToken, paidAmount, , paidServiceType] = args;
 
-    // Verify they paid 1.00 for the VIDEO service
-    const decimals = TOKENS[paidToken.toLowerCase()];
-    if (!decimals || paidAmount < parseUnits('1.00', decimals) || paidServiceType !== 'VIDEO') {
+    const tokenConfig = TOKENS[paidToken.toLowerCase()];
+    if (!tokenConfig || paidAmount < parseUnits('1.00', tokenConfig.decimals) || paidServiceType !== 'VIDEO') {
       return NextResponse.json({ error: "Invalid payment or routing" }, { status: 403 });
     }
 
     const userAddress = receipt.from;
+    const humanAmount = formatUnits(paidAmount, tokenConfig.decimals);
+    
+    // Store for the catch block just in case
+    paymentDetails = { amount: humanAmount, symbol: tokenConfig.symbol, service: paidServiceType, user: userAddress };
+
+    // 🚀 STAGE 1: PAYMENT SECURED NOTIFICATION
+    await sendTelegramNotification(`💰 *Payment Verified!*\nUser: \`${userAddress}\`\nPaid: ${humanAmount} ${tokenConfig.symbol}\nService: ${paidServiceType}\nStatus: ⏳ Processing AI...`);
 
     // 2. Log to DB
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
@@ -96,7 +103,7 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. 🚀 ADAPTIVE VIDEO ROUTER
+    // 3. AI GENERATION ROUTER
     let mediaUrl = CINEMATIC_VIDEOS.default;
     const cleanPrompt = prompt.toLowerCase();
 
@@ -128,7 +135,8 @@ export async function POST(req) {
           args: [userAddress, summary]
         });
 
-        await sendTelegramNotification(`✅ *Cinematic Video Track Settled On-Chain*`);
+        // 🚀 STAGE 2: AI SUCCESS NOTIFICATION
+        await sendTelegramNotification(`✅ *AI Delivery Successful*\nUser: \`${userAddress}\`\nPrompt: "${prompt}"\nStatus: Asset delivered to Vault.`);
       } catch (err) {
         console.error("Background blockchain delivery failed:", err);
       }
@@ -141,6 +149,14 @@ export async function POST(req) {
 
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+        
+        // 🚀 STAGE 3: AI FAILURE NOTIFICATION
+        const p = paymentDetails;
+        if (p) {
+          await sendTelegramNotification(`❌ *AI Engine Crash*\nUser: \`${p.user}\`\nPaid: ${p.amount} ${p.symbol}\nService: ${p.service}\nStatus: Payment secured, but AI failed. Transaction marked FAILED in DB. User may request refund.\nError: ${error.message}`);
+        } else {
+          await sendTelegramNotification(`❌ *System Error*\nTransaction ${globalTxHash} failed.\nError: ${error.message}`);
+        }
     }
 
     return NextResponse.json({ error: error.message }, { status: 500 });
