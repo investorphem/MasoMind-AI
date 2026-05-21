@@ -37,12 +37,13 @@ const DELIVERY_ABI = [{
 }];
 
 export async function POST(req) {
+  let globalTxHash = null;
+
   try {
     const { prompt, txHash } = await req.json();
-
-    if (!prompt || !txHash) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
-    }
+    if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    
+    globalTxHash = txHash;
 
     const publicClient = createPublicClient({ chain: celo, transport: http() });
 
@@ -63,7 +64,7 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Log to DB (Included token_address for auto-refund compatibility)
+    // 2. Log to DB
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
@@ -72,38 +73,73 @@ export async function POST(req) {
         service_type: 'IMAGE', 
         status: 'PENDING', 
         user_address: userAddress.toLowerCase(),
-        token_address: paidToken.toLowerCase() // 🚀 Mandatory for Auto-Refund
+        token_address: paidToken.toLowerCase()
       }]);
     }
 
-    // 3. AI Generation
-    const randomSeed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux&enhance=true&seed=${randomSeed}`;
+    // 3. 🚀 ENTERPRISE AI GENERATION (Flux via Together AI)
+    const togetherApiKey = process.env.TOGETHER_API_KEY;
+    if (!togetherApiKey) throw new Error("TOGETHER_API_KEY is missing in Vercel");
 
-    // 4. 🚀 AUTONOMOUS DELIVERY (Agent signing to the contract)
-    const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-    const agentClient = createWalletClient({ account, chain: celo, transport: http() });
-
-    const deliveryHash = await agentClient.writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: DELIVERY_ABI,
-      functionName: 'deliverResult',
-      args: [userAddress, imageUrl]
+    const aiResponse = await fetch('https://api.together.xyz/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${togetherApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "black-forest-labs/FLUX.1-schnell-Free", // Uses Flux Schnell for speed + high quality
+        prompt: prompt,
+        width: 1024,
+        height: 1024,
+        steps: 4,
+        n: 1,
+        response_format: "url"
+      })
     });
 
-    // 5. Finalize DB
+    if (!aiResponse.ok) {
+        const errorData = await aiResponse.json();
+        throw new Error(`Together API Error: ${errorData.error?.message || aiResponse.statusText}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const imageUrl = aiData.data[0].url;
+
+    if (!imageUrl) throw new Error("Failed to extract image URL from provider");
+
+    // 4. NON-BLOCKING DELIVERY
     await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: imageUrl, tx_hash: deliveryHash })
+      .update({ status: 'COMPLETED', result_data: imageUrl })
       .eq('tx_hash', txHash);
 
-    await sendTelegramNotification(`✅ *Image Delivered On-Chain*\nTx: \`${deliveryHash.substring(0, 10)}...\``);
+    (async () => {
+      try {
+        const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
+        const agentClient = createWalletClient({ account, chain: celo, transport: http() });
+        const summary = `Image Generated: ${prompt.substring(0, 15)}...`;
+
+        await agentClient.writeContract({
+          address: CONTRACT_ADDRESS,
+          abi: DELIVERY_ABI,
+          functionName: 'deliverResult',
+          args: [userAddress, summary]
+        });
+        await sendTelegramNotification(`✅ *Premium Image Delivered On-Chain*`);
+      } catch (err) {
+        console.error("Background blockchain delivery failed:", err);
+      }
+    })();
 
     return NextResponse.json({ imageUrl });
 
   } catch (error) {
     console.error("Image API Error:", error);
-    await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
-    await sendTelegramNotification(`❌ *Image Generation Failed*`);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    
+    if (globalTxHash) {
+        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+    }
+    
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
