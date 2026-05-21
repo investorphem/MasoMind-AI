@@ -37,9 +37,14 @@ const DELIVERY_ABI = [{
 }];
 
 export async function POST(req) {
+  // 🚀 Declare txHash outside the try block so the catch block can access it safely
+  let globalTxHash = null; 
+
   try {
     const { prompt, txHash } = await req.json();
     if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    
+    globalTxHash = txHash; // Assign it for global access
 
     const publicClient = createPublicClient({ chain: celo, transport: http() });
 
@@ -75,14 +80,13 @@ export async function POST(req) {
 
     // 3. AI Generation
     const apiKey = process.env.GEMINI_API_KEY;
-    // 🚀 Swapped to 1.5-flash to bypass your temporary quota limit on 2.0-flash
-    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // Reverted to gemini-2.0-flash (Assuming your per-minute rate limit has reset)
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: `Analyze this code: ${prompt}` }] }] })
     });
 
-    // Check if the AI request actually succeeded
     if (!aiResponse.ok) {
         const errorData = await aiResponse.json();
         throw new Error(`Gemini API Error: ${errorData.error?.message || aiResponse.statusText}`);
@@ -119,9 +123,9 @@ export async function POST(req) {
   } catch (error) {
     console.error("Audit API Error:", error);
     
-    // 🚀 CRITICAL: Update DB to FAILED so the auto-refund engine allows the user to get their money back
-    if (req.body && txHash) {
-        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
+    // 🚀 We can now safely use globalTxHash because it was declared outside the try block
+    if (globalTxHash) {
+        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     }
     
     return NextResponse.json({ error: error.message }, { status: 500 });
