@@ -98,6 +98,12 @@ export default function LibraryPage() {
         return;
       }
 
+      // 🚀 THE FIX FOR LIBRARY MEDIA DOWNLOADS
+      if (item.data.startsWith('http')) {
+        window.location.href = `/api/download?url=${encodeURIComponent(item.data)}&action=download`;
+        return;
+      }
+
       // Create a hidden form to submit the Base64 data directly to the Next.js server
       const form = document.createElement('form');
       form.method = 'POST';
@@ -221,7 +227,11 @@ export default function LibraryPage() {
                     )}
                     {item.type === 'VIDEO' && (
                       <div className="w-full h-full relative">
-                        <video src={item.data} className="w-full h-full object-cover opacity-80" />
+                        {/* 🚀 PROXY STREAM FIX */}
+                        <video 
+                          src={item.data.startsWith('http') ? `/api/download?url=${encodeURIComponent(item.data)}&action=stream` : item.data} 
+                          className="w-full h-full object-cover opacity-80" 
+                        />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
                           <PlayCircle className="w-10 h-10 text-white shadow-2xl" />
                         </div>
@@ -309,11 +319,24 @@ export default function LibraryPage() {
                   <div className="p-8 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
                     <Music className="w-20 h-20 text-emerald-400" />
                   </div>
-                  <audio key={selectedAsset.data} controls autoPlay className="w-full px-4" src={selectedAsset.data} />
+                  {/* 🚀 PROXY STREAM FIX */}
+                  <audio 
+                    key={selectedAsset.data} 
+                    controls 
+                    autoPlay 
+                    className="w-full px-4" 
+                    src={selectedAsset.data.startsWith('http') ? `/api/download?url=${encodeURIComponent(selectedAsset.data)}&action=stream` : selectedAsset.data} 
+                  />
                 </div>
               )}
               {selectedAsset.type === 'VIDEO' && (
-                <video controls autoPlay className="w-full aspect-video rounded-2xl border border-zinc-800 shadow-xl bg-black" src={selectedAsset.data} />
+                {/* 🚀 PROXY STREAM FIX */}
+                <video 
+                  controls 
+                  autoPlay 
+                  className="w-full aspect-video rounded-2xl border border-zinc-800 shadow-xl bg-black" 
+                  src={selectedAsset.data.startsWith('http') ? `/api/download?url=${encodeURIComponent(selectedAsset.data)}&action=stream` : selectedAsset.data} 
+                />
               )}
             </div>
 
