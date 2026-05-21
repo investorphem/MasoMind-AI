@@ -191,15 +191,12 @@ export default function MasoMindApp() {
         return;
       }
 
-      // 3. 🚀 NEW: Direct HTTP URL Download (For Mixkit/External APIs)
+            // 3. 🚀 THE MAGIC BULLET FOR WEBVIEW DOWNLOADS
       if (resultData.startsWith('http')) {
-        const link = document.createElement('a');
-        link.href = resultData;
-        link.setAttribute('download', `MasoMind-${mode.toLowerCase()}`);
-        link.setAttribute('target', '_blank');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Changing the top-level window location to an 'attachment' header route 
+        // completely overrides the wallet and triggers Android's Native Download Manager.
+        window.location.href = `/api/download?url=${encodeURIComponent(resultData)}`;
+        showToast("Download started in notification bar...", "success");
         return;
       }
 
@@ -580,12 +577,13 @@ export default function MasoMindApp() {
                   <Music className="w-12 h-12 text-emerald-400" />
                 </div>
                 {/* 🚀 CRITICAL FIX: Simplified audio tag with autoPlay for WebView compatibility */}
+                                {/* 🚀 PROXY PLAYBACK FIX: Bypasses strict wallet CORS to fix the 0:00 bug */}
                 <audio 
                   key={resultData} 
                   controls 
                   autoPlay 
                   className="w-full text-emerald-500" 
-                  src={resultData}
+                  src={resultData.startsWith('http') ? `/api/download?url=${encodeURIComponent(resultData)}&stream=true` : resultData}
                 >
                   Your browser does not support the audio element.
                 </audio>
