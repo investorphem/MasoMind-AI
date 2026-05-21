@@ -157,9 +157,10 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadAsset = async () => {
+    const downloadAsset = async () => {
     if (!resultData) return;
     try {
+      // 1. Text/Audit Download
       if (mode === 'AUDIT') {
         if (navigator.share) {
           await navigator.share({ title: 'MasoMind Security Audit', text: resultData });
@@ -170,6 +171,14 @@ export default function MasoMindApp() {
         return;
       }
 
+      // 2. 🚀 NEW: Image Download (URL-based GET Request)
+      // This bypasses MiniPay's CORS blocks and triggers native download
+      if (mode === 'IMAGE') {
+        window.location.href = `/api/download?url=${encodeURIComponent(resultData)}&type=IMAGE`;
+        return;
+      }
+
+      // 3. Audio/Video Download (Base64 POST Request)
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = '/api/download';
