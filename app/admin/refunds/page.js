@@ -81,22 +81,45 @@ export default function AdminRefunds() {
     }
   };
 
-  // 🛡️ SECURITY BARRIER
+    // 🛡️ SECURITY BARRIER
   if (!isConnected || address?.toLowerCase() !== ADMIN_WALLET) {
     return (
       <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-100 p-4">
         <Lock className="w-12 h-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-bold tracking-widest text-red-400">RESTRICTED AREA</h2>
+        <h2 className="text-xl font-bold tracking-widest text-red-400 mb-6">RESTRICTED AREA</h2>
         
+        {/* ADD YOUR WALLET CONNECT BUTTON HERE SO YOU CAN LOG IN */}
+        <div className="mb-8">
+           {/* If you use AppKit/Web3Modal, this is the standard tag. 
+               If you use a custom button component, replace this with your component (e.g. <ConnectButton />) */}
+           <appkit-button /> 
+        </div>
+
         {/* Debugging helper to fix your login issue */}
-        <button onClick={() => setDebugMode(!debugMode)} className="text-[10px] text-zinc-600 mt-8 underline">
-           {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
+        <button onClick={() => setDebugMode(!debugMode)} className="text-[10px] text-zinc-500 hover:text-zinc-300 underline transition-colors">
+           {debugMode ? 'Hide Diagnostics' : 'Why am I blocked?'}
         </button>
+        
         {debugMode && (
-          <div className="mt-4 p-4 bg-zinc-900 rounded-lg text-[10px] font-mono text-left max-w-sm overflow-hidden break-all">
-            <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
-            <p>Address: {address}</p>
-            <p>Target: {ADMIN_WALLET}</p>
+          <div className="mt-4 p-4 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-left max-w-sm w-full overflow-hidden break-all space-y-2">
+            <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
+               <span className="text-zinc-500">Status:</span>
+               <span className={isConnected ? "text-emerald-500" : "text-amber-500"}>
+                 {isConnected ? 'Wallet Connected' : 'Wallet Disconnected'}
+               </span>
+            </div>
+            
+            <div className="flex flex-col gap-1 pt-2">
+               <span className="text-zinc-500">Your Wallet:</span>
+               <span className={address?.toLowerCase() === ADMIN_WALLET ? "text-emerald-500" : "text-red-400"}>
+                 {address ? address.toLowerCase() : 'None'}
+               </span>
+            </div>
+
+            <div className="flex flex-col gap-1 pt-2">
+               <span className="text-zinc-500">Required Admin:</span>
+               <span className="text-emerald-500">{ADMIN_WALLET}</span>
+            </div>
           </div>
         )}
       </div>
