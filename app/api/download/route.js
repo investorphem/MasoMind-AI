@@ -1,47 +1,55 @@
 import { NextResponse } from 'next/server';
 
 // ---------------------------------------------------------
-// ADD THIS GET METHOD (For URLs like Together AI Images)
+// DYNAMIC GET METHOD (Handles URLs, Streaming, and native downloads)
 // ---------------------------------------------------------
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const fileUrl = searchParams.get('url');
-    const fileType = searchParams.get('type') || 'IMAGE';
+    const stream = searchParams.get('stream');
 
     if (!fileUrl) {
       return new NextResponse("Missing file URL", { status: 400 });
     }
 
+    // Fetch the remote file
     const response = await fetch(fileUrl);
     if (!response.ok) throw new Error("Failed to fetch from provider");
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    let ext = 'png';
-    let mime = 'image/png';
+    // Dynamically detect what kind of file this is based on the remote server's headers
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    let ext = 'bin';
+    if (contentType.includes('audio')) ext = 'mp3';
+    else if (contentType.includes('video')) ext = 'mp4';
+    else if (contentType.includes('image')) ext = 'png';
 
-    // THE MAGIC TRICK: "attachment" forces the OS to download natively
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        'Content-Disposition': `attachment; filename="MasoMind-${fileType}-${Date.now()}.${ext}"`,
-        'Content-Type': mime,
-        'Content-Length': buffer.length.toString(),
-        'Cache-Control': 'no-cache'
-      },
-    });
+    const headers = new Headers();
+    headers.set('Content-Type', contentType);
+    headers.set('Content-Length', buffer.length.toString());
+    headers.set('Cache-Control', 'no-cache');
+
+    if (stream === 'true') {
+      // 🚀 INLINE: Forces Web3 wallets to play the audio natively (Fixes 0:00 bug)
+      headers.set('Content-Disposition', 'inline');
+    } else {
+      // 🚀 ATTACHMENT: Forces Android/iOS to download the file directly
+      headers.set('Content-Disposition', `attachment; filename="MasoMind-Premium.${ext}"`);
+    }
+
+    return new NextResponse(buffer, { status: 200, headers });
 
   } catch (error) {
     console.error("GET Download Proxy Error:", error);
-    return new NextResponse("Failed to process download", { status: 500 });
+    return new NextResponse("Failed to process media", { status: 500 });
   }
 }
 
 // ---------------------------------------------------------
-// KEEP YOUR EXISTING POST METHOD EXACTLY AS IT IS BELOW
-// (This continues to handle your Base64 Music/Video)
+// EXISTING POST METHOD (Handles Base64 outputs perfectly)
 // ---------------------------------------------------------
 export async function POST(req) {
   try {
@@ -65,7 +73,7 @@ export async function POST(req) {
       const base64Data = fileData.split(',')[1];
       buffer = Buffer.from(base64Data, 'base64');
     } else if (fileData.startsWith('http')) {
-      // Or fetch standard image URLs
+      // Or fetch standard URLs
       const response = await fetch(fileData);
       const arrayBuffer = await response.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
@@ -73,15 +81,13 @@ export async function POST(req) {
        return new NextResponse("Invalid data format", { status: 400 });
     }
 
-    // 🚀 THE MAGIC TRICK: "attachment" forces the OS to download the file natively
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        'Content-Disposition': `attachment; filename="MasoMind-${fileType}-${Date.now()}.${ext}"`,
-        'Content-Type': mime,
-        'Content-Length': buffer.length.toString(),
-      },
-    });
+    const headers = new Headers();
+    headers.set('Content-Type', mime);
+    headers.set('Content-Length', buffer.length.toString());
+    // 🚀 ATTACHMENT: Forces OS download natively
+    headers.set('Content-Disposition', `attachment; filename="MasoMind-${fileType}-${Date.now()}.${ext}"`);
+
+    return new NextResponse(buffer, { status: 200, headers });
 
   } catch (error) {
     console.error("Download Proxy Error:", error);
