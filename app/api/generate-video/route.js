@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits } from 'viem';
+// 🚀 ADDED 'fallback' TO IMPORTS
+import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
@@ -9,6 +10,14 @@ export const maxDuration = 60;
 
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
+
+// 🚀 ENTERPRISE RPC CONFIGURATION
+const celoTransports = fallback([
+  http('https://forno.celo.org'),
+  http('https://rpc.celo-community.org'),
+  http('https://1rpc.io/celo'),
+  http('https://celo.drpc.org')
+]);
 
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': 18,
@@ -39,11 +48,16 @@ const DELIVERY_ABI = [{
 }];
 
 export async function POST(req) {
+  let globalTxHash = null; // 🚀 Added to safely track failures for refunds
+
   try {
     const { prompt, txHash } = await req.json();
     if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
-    const publicClient = createPublicClient({ chain: celo, transport: http() });
+    globalTxHash = txHash;
+
+    // 🚀 UPDATED PUBLIC CLIENT TO USE FALLBACK
+    const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
     // 1. Verify Transaction
     const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
@@ -62,7 +76,7 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Log to DB (Included token_address for auto-refund compatibility)
+    // 2. Log to DB
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
@@ -86,7 +100,6 @@ export async function POST(req) {
       })
     });
 
-    // Explicitly catch Google API errors (like Quota Exceeded)
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(`Google API Error: ${errorData.error?.message || response.statusText}`);
@@ -98,18 +111,16 @@ export async function POST(req) {
     const mediaUrl = `data:video/mp4;base64,${data.candidates[0].content.parts[0].inlineData.data}`;
 
     // 4. NON-BLOCKING DELIVERY
-    // Save the video to the DB immediately and mark COMPLETED
     await supabase.from('transactions')
       .update({ status: 'COMPLETED', result_data: mediaUrl })
       .eq('tx_hash', txHash);
 
-    // Run Blockchain delivery in the background
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-        const agentClient = createWalletClient({ account, chain: celo, transport: http() });
-        
-        // Blockchain cannot handle massive base64 strings. Send a summary instead.
+        // 🚀 UPDATED AGENT CLIENT TO USE FALLBACK
+        const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
+
         const summary = `Video Generated: ${prompt.substring(0, 15)}...`;
 
         await agentClient.writeContract({
@@ -118,23 +129,23 @@ export async function POST(req) {
           functionName: 'deliverResult',
           args: [userAddress, summary]
         });
-        
+
         await sendTelegramNotification(`✅ *Video Delivered On-Chain*`);
       } catch (err) {
         console.error("Background blockchain delivery failed:", err);
       }
     })();
 
-    // Return the video immediately to the UI
     return NextResponse.json({ mediaUrl });
 
   } catch (error) {
     console.error("Video API Error:", error);
-    
-    // Ensure the database registers the failure so the user can request a refund
-    await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
-    
-    // Return the actual error message so your UI knows what happened
+
+    // 🚀 CRITICAL FIX: Safely mark transaction as failed so refunds can trigger
+    if (globalTxHash) {
+        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+    }
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
