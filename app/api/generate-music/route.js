@@ -71,7 +71,7 @@ export async function POST(req) {
         service_type: 'MUSIC', 
         status: 'PENDING', 
         user_address: userAddress.toLowerCase(),
-        token_address: paidToken.toLowerCase() // 🚀 Mandatory for Auto-Refund
+        token_address: paidToken.toLowerCase() 
       }]);
     }
 
@@ -86,35 +86,51 @@ export async function POST(req) {
       })
     });
 
+    // Check if the AI request failed (e.g., Rate Limits)
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Google API Error: ${errorData.error?.message || response.statusText}`);
+    }
+
     const data = await response.json();
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.inlineData) throw new Error("AI Generation failed");
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.inlineData) throw new Error("AI Generation failed to return audio data");
 
     const mediaUrl = `data:audio/mp3;base64,${data.candidates[0].content.parts[0].inlineData.data}`;
 
-    // 4. 🚀 AUTONOMOUS DELIVERY (Agent signing to the contract)
-    const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-    const agentClient = createWalletClient({ account, chain: celo, transport: http() });
-
-    const deliveryHash = await agentClient.writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: DELIVERY_ABI,
-      functionName: 'deliverResult',
-      args: [userAddress, mediaUrl]
-    });
-
-    // 5. Finalize DB
+    // 4. NON-BLOCKING DELIVERY
+    // Save the massive audio string to the DB immediately and mark COMPLETED
     await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: mediaUrl, tx_hash: deliveryHash })
+      .update({ status: 'COMPLETED', result_data: mediaUrl })
       .eq('tx_hash', txHash);
 
-    await sendTelegramNotification(`✅ *Music Delivered On-Chain*\nTx: \`${deliveryHash.substring(0, 10)}...\``);
+    // Run Blockchain delivery in the background
+    (async () => {
+      try {
+        const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
+        const agentClient = createWalletClient({ account, chain: celo, transport: http() });
+        
+        // Blockchain cannot handle a massive base64 string. Send a summary instead.
+        const summary = `Music Generated: ${prompt.substring(0, 15)}...`;
 
+        await agentClient.writeContract({
+          address: CONTRACT_ADDRESS,
+          abi: DELIVERY_ABI,
+          functionName: 'deliverResult',
+          args: [userAddress, summary]
+        });
+        
+        await sendTelegramNotification(`✅ *Music Delivered On-Chain*`);
+      } catch (err) {
+        console.error("Background blockchain delivery failed:", err);
+      }
+    })();
+
+    // Return the audio immediately to the UI
     return NextResponse.json({ mediaUrl });
 
   } catch (error) {
     console.error("Music API Error:", error);
-    await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', txHash);
-    await sendTelegramNotification(`❌ *Music Generation Failed*`);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    // Return the actual error message so your UI knows what happened
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
