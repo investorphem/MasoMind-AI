@@ -1,55 +1,57 @@
 import { NextResponse } from 'next/server';
 
-// ---------------------------------------------------------
-// DYNAMIC GET METHOD (Handles URLs, Streaming, and native downloads)
-// ---------------------------------------------------------
+// 🚀 CRITICAL: Forces Vercel to stream the response instead of caching it
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
-    const { searchParams } = new URL(req.url);
-    const fileUrl = searchParams.get('url');
-    const stream = searchParams.get('stream');
+    const url = req.nextUrl.searchParams.get('url');
+    const action = req.nextUrl.searchParams.get('action'); // 'stream' or 'download'
 
-    if (!fileUrl) {
-      return new NextResponse("Missing file URL", { status: 400 });
-    }
+    if (!url) return new NextResponse("Missing URL", { status: 400 });
 
-    // Fetch the remote file
-    const response = await fetch(fileUrl);
-    if (!response.ok) throw new Error("Failed to fetch from provider");
+    // Fetch the media server-to-server to bypass all browser CORS blocks
+    const remoteRes = await fetch(url);
+    if (!remoteRes.ok) throw new Error("Failed to fetch media");
 
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    // Copy the original headers so we maintain the correct file size and type
+    const headers = new Headers(remoteRes.headers);
+    
+    // 🚀 STRIP EXTERNAL SECURITY BLOCKS so MiniPay allows it to play
+    headers.delete('x-frame-options');
+    headers.delete('content-security-policy');
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
-    // Dynamically detect what kind of file this is based on the remote server's headers
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
-    let ext = 'bin';
-    if (contentType.includes('audio')) ext = 'mp3';
-    else if (contentType.includes('video')) ext = 'mp4';
-    else if (contentType.includes('image')) ext = 'png';
+    // Auto-detect if it is a video or music file
+    const contentType = remoteRes.headers.get('content-type') || '';
+    let ext = '.bin';
+    if (contentType.includes('audio')) ext = '.mp3';
+    if (contentType.includes('video')) ext = '.mp4';
 
-    const headers = new Headers();
-    headers.set('Content-Type', contentType);
-    headers.set('Content-Length', buffer.length.toString());
-    headers.set('Cache-Control', 'no-cache');
-
-    if (stream === 'true') {
-      // 🚀 INLINE: Forces Web3 wallets to play the audio natively (Fixes 0:00 bug)
-      headers.set('Content-Disposition', 'inline');
+    if (action === 'download') {
+      // Force the phone's native download manager
+      headers.set('Content-Disposition', `attachment; filename="MasoMind-Asset${ext}"`);
     } else {
-      // 🚀 ATTACHMENT: Forces Android/iOS to download the file directly
-      headers.set('Content-Disposition', `attachment; filename="MasoMind-Premium.${ext}"`);
+      // Force inline playback in the browser
+      headers.set('Content-Disposition', 'inline');
     }
 
-    return new NextResponse(buffer, { status: 200, headers });
+    // 🚀 THE MAGIC: Instead of loading the whole file into RAM (which crashes Vercel),
+    // we pipe the raw byte stream directly to the user. This allows instant chunked playback!
+    return new NextResponse(remoteRes.body, {
+      status: remoteRes.status,
+      headers
+    });
 
   } catch (error) {
-    console.error("GET Download Proxy Error:", error);
-    return new NextResponse("Failed to process media", { status: 500 });
+    console.error("Streaming Proxy Error:", error);
+    return new NextResponse("Failed to stream media", { status: 500 });
   }
 }
 
 // ---------------------------------------------------------
-// EXISTING POST METHOD (Handles Base64 outputs perfectly)
+// EXISTING POST METHOD (For handling Base64 text downloads)
 // ---------------------------------------------------------
 export async function POST(req) {
   try {
@@ -57,9 +59,7 @@ export async function POST(req) {
     const fileData = formData.get('fileData');
     const fileType = formData.get('fileType') || 'MEDIA';
 
-    if (!fileData) {
-      return new NextResponse("Missing file data", { status: 400 });
-    }
+    if (!fileData) return new NextResponse("Missing file data", { status: 400 });
 
     let buffer;
     let ext = 'jpg';
@@ -68,29 +68,20 @@ export async function POST(req) {
     if (fileType === 'MUSIC') { ext = 'mp3'; mime = 'audio/mp3'; }
     if (fileType === 'VIDEO') { ext = 'mp4'; mime = 'video/mp4'; }
 
-    // Parse massive Base64 strings natively on the server
     if (fileData.startsWith('data:')) {
       const base64Data = fileData.split(',')[1];
       buffer = Buffer.from(base64Data, 'base64');
-    } else if (fileData.startsWith('http')) {
-      // Or fetch standard URLs
-      const response = await fetch(fileData);
-      const arrayBuffer = await response.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
     } else {
-       return new NextResponse("Invalid data format", { status: 400 });
+       return new NextResponse("Invalid Base64 format", { status: 400 });
     }
 
     const headers = new Headers();
     headers.set('Content-Type', mime);
     headers.set('Content-Length', buffer.length.toString());
-    // 🚀 ATTACHMENT: Forces OS download natively
     headers.set('Content-Disposition', `attachment; filename="MasoMind-${fileType}-${Date.now()}.${ext}"`);
 
     return new NextResponse(buffer, { status: 200, headers });
-
   } catch (error) {
-    console.error("Download Proxy Error:", error);
-    return new NextResponse("Failed to process download", { status: 500 });
+    return new NextResponse("Failed to process base64 download", { status: 500 });
   }
 }
