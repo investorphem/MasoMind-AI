@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits } from 'viem';
-import { fallback } from 'viem'; // 🚀 ADD THIS IMPORT
+// 🚀 Added "fallback" to your imports here:
+import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
@@ -8,6 +8,14 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 
 const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
+
+// 🚀 ENTERPRISE RPC CONFIGURATION (Defined globally)
+const celoTransports = fallback([
+  http('https://forno.celo.org'),           // The default, sometimes slow
+  http('https://rpc.celo-community.org'),   // Community backup
+  http('https://1rpc.io/celo'),             // High-performance aggregator
+  http('https://celo.drpc.org')             // Decentralized RPC
+]);
 
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD
@@ -46,7 +54,8 @@ export async function POST(req) {
     
     globalTxHash = txHash;
 
-    const publicClient = createPublicClient({ chain: celo, transport: http() });
+    // 🚀 Updated publicClient to use the fallback array
+    const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
     // 1. Verify Transaction
     const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
@@ -78,15 +87,13 @@ export async function POST(req) {
       }]);
     }
 
-        // 3. 🚀 ENTERPRISE AI GENERATION (Smart Routing + Flux)
+    // 3. ENTERPRISE AI GENERATION (Smart Routing + Flux)
     const togetherApiKey = process.env.TOGETHER_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
     
     if (!togetherApiKey) throw new Error("TOGETHER_API_KEY is missing");
 
-    // --- STEP 3A: The Analyzer (Smart Prompt Enhancement) ---
-    // We use a lightweight Gemini call to analyze what the user actually wants and format it perfectly for Flux.
-    let enhancedPrompt = prompt; // Fallback to original prompt
+    let enhancedPrompt = prompt; 
     try {
         const analyzeResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
             method: 'POST',
@@ -110,16 +117,13 @@ export async function POST(req) {
         if (analyzeResponse.ok) {
             const analyzeData = await analyzeResponse.json();
             if (analyzeData.candidates?.[0]?.content?.parts?.[0]?.text) {
-                // Use the masterfully crafted prompt instead
                 enhancedPrompt = analyzeData.candidates[0].content.parts[0].text.trim();
-                console.log("Original:", prompt, "-> Enhanced:", enhancedPrompt);
             }
         }
     } catch (e) {
         console.warn("Analyzer skipped, using raw prompt:", e.message);
     }
 
-    // --- STEP 3B: The Generation (Flux via Together AI) ---
     const aiResponse = await fetch('https://api.together.xyz/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -128,7 +132,7 @@ export async function POST(req) {
       },
       body: JSON.stringify({
         model: "black-forest-labs/FLUX.1-schnell",
-        prompt: enhancedPrompt, // Feed Flux the perfected prompt
+        prompt: enhancedPrompt, 
         width: 1024,
         height: 1024,
         steps: 4,
@@ -155,7 +159,8 @@ export async function POST(req) {
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
-        const agentClient = createWalletClient({ account, chain: celo, transport: http() });
+        // 🚀 Updated agentClient to use the fallback array
+        const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
         const summary = `Image Generated: ${prompt.substring(0, 15)}...`;
 
         await agentClient.writeContract({
