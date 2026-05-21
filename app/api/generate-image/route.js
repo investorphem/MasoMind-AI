@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits } from 'viem';
+import { fallback } from 'viem'; // 🚀 ADD THIS IMPORT
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
