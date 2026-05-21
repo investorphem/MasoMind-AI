@@ -157,7 +157,7 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadAsset = async () => {
+    const downloadAsset = async () => {
     if (!resultData) return;
     try {
       // 1. Text/Audit Download
@@ -171,49 +171,52 @@ export default function MasoMindApp() {
         return;
       }
 
-      // 2. 🚀 SUPABASE NATIVE DOWNLOAD (Bypasses MiniPay WebView Blocks)
+      // 2. Image Download
       if (mode === 'IMAGE') {
         let finalUrl = resultData;
-
-        // If the image is in your Supabase Vault, append their native download command
         if (finalUrl.includes('supabase.co')) {
           finalUrl = finalUrl.includes('?') 
             ? `${finalUrl}&download=MasoMind-Premium.png` 
             : `${finalUrl}?download=MasoMind-Premium.png`;
         } else {
-          // Fallback proxy for older images not in the vault
           finalUrl = `/api/download?url=${encodeURIComponent(resultData)}&type=IMAGE`;
         }
-
-        // Trick the WebView by simulating a real user click on an external link
         const link = document.createElement('a');
         link.href = finalUrl;
         link.setAttribute('download', 'MasoMind-Premium.png');
-        link.setAttribute('target', '_blank'); // Forces the OS download manager to open it
+        link.setAttribute('target', '_blank');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
         return;
       }
 
-      // 3. Audio/Video Download (Base64 POST Request)
+      // 3. 🚀 NEW: Direct HTTP URL Download (For Mixkit/External APIs)
+      if (resultData.startsWith('http')) {
+        const link = document.createElement('a');
+        link.href = resultData;
+        link.setAttribute('download', `MasoMind-${mode.toLowerCase()}`);
+        link.setAttribute('target', '_blank');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // 4. Base64 POST Request (Fallback for older AI base64 data)
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = '/api/download';
-
       const dataInput = document.createElement('input');
       dataInput.type = 'hidden';
       dataInput.name = 'fileData';
       dataInput.value = resultData;
       form.appendChild(dataInput);
-
       const typeInput = document.createElement('input');
       typeInput.type = 'hidden';
       typeInput.name = 'fileType';
       typeInput.value = mode;
       form.appendChild(typeInput);
-
       document.body.appendChild(form);
       form.submit(); 
       document.body.removeChild(form);
@@ -571,14 +574,19 @@ export default function MasoMindApp() {
               </div>
             )}
 
-            {mode === 'MUSIC' && (
+                        {mode === 'MUSIC' && (
               <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 shadow-2xl bg-gradient-to-b from-zinc-900 to-zinc-950">
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                   <Music className="w-12 h-12 text-emerald-400" />
                 </div>
-                <audio key={resultData} controls className="w-full text-emerald-500" preload="auto">
-                  <source src={resultData} type="audio/mpeg" />
-                  <source src={resultData} type="audio/wav" />
+                {/* 🚀 CRITICAL FIX: Simplified audio tag with autoPlay for WebView compatibility */}
+                <audio 
+                  key={resultData} 
+                  controls 
+                  autoPlay 
+                  className="w-full text-emerald-500" 
+                  src={resultData}
+                >
                   Your browser does not support the audio element.
                 </audio>
                 <button onClick={downloadAsset} className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl text-xs font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2">
