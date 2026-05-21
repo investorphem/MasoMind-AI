@@ -157,7 +157,7 @@ export default function MasoMindApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-    const downloadAsset = async () => {
+      const downloadAsset = async () => {
     if (!resultData) return;
     try {
       // 1. Text/Audit Download
@@ -171,10 +171,29 @@ export default function MasoMindApp() {
         return;
       }
 
-      // 2. 🚀 NEW: Image Download (URL-based GET Request)
-      // This bypasses MiniPay's CORS blocks and triggers native download
+      // 2. 🚀 SUPABASE NATIVE DOWNLOAD (Bypasses MiniPay WebView Blocks)
       if (mode === 'IMAGE') {
-        window.location.href = `/api/download?url=${encodeURIComponent(resultData)}&type=IMAGE`;
+        let finalUrl = resultData;
+        
+        // If the image is in your Supabase Vault, append their native download command
+        if (finalUrl.includes('supabase.co')) {
+          finalUrl = finalUrl.includes('?') 
+            ? `${finalUrl}&download=MasoMind-Premium.png` 
+            : `${finalUrl}?download=MasoMind-Premium.png`;
+        } else {
+          // Fallback proxy for older images not in the vault
+          finalUrl = `/api/download?url=${encodeURIComponent(resultData)}&type=IMAGE`;
+        }
+
+        // Trick the WebView by simulating a real user click on an external link
+        const link = document.createElement('a');
+        link.href = finalUrl;
+        link.setAttribute('download', 'MasoMind-Premium.png');
+        link.setAttribute('target', '_blank'); // Forces the OS download manager to open it
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
         return;
       }
 
