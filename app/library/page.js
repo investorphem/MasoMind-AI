@@ -63,7 +63,7 @@ export default function LibraryPage() {
     if (selectedAsset?.id === id) setSelectedAsset(null);
   };
 
-  // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
+    // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
   const downloadAsset = async (item) => {
     try {
       if (item.type === 'AUDIT') {
@@ -73,6 +73,28 @@ export default function LibraryPage() {
           navigator.clipboard.writeText(item.data);
           alert("Audit copied to clipboard!");
         }
+        return;
+      }
+
+      // 🚀 NATIVE SUPABASE DOWNLOAD FOR IMAGES
+      if (item.type === 'IMAGE') {
+        let finalUrl = item.data;
+        if (finalUrl.includes('supabase.co')) {
+          finalUrl = finalUrl.includes('?') 
+            ? `${finalUrl}&download=MasoMind-Premium.png` 
+            : `${finalUrl}?download=MasoMind-Premium.png`;
+        } else {
+          finalUrl = `/api/download?url=${encodeURIComponent(item.data)}&type=IMAGE`;
+        }
+
+        const link = document.createElement('a');
+        link.href = finalUrl;
+        link.setAttribute('download', 'MasoMind-Premium.png');
+        link.setAttribute('target', '_blank');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
         return;
       }
 
@@ -189,7 +211,14 @@ export default function LibraryPage() {
                       {item.type}
                     </div>
 
-                    {item.type === 'IMAGE' && <img src={item.data} className="w-full h-full object-cover" loading="lazy" />}
+                                        {item.type === 'IMAGE' && (
+                      <img 
+                        src={item.data} 
+                        className="w-full h-full object-cover" 
+                        loading="lazy" 
+                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1024"; }}
+                      />
+                    )}
                     {item.type === 'VIDEO' && (
                       <div className="w-full h-full relative">
                         <video src={item.data} className="w-full h-full object-cover opacity-80" />
@@ -267,15 +296,20 @@ export default function LibraryPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col items-center justify-center min-h-[300px] bg-zinc-950/50">
-              {selectedAsset.type === 'IMAGE' && (
-                <img src={selectedAsset.data} alt="Expanded Asset" className="w-full rounded-2xl shadow-xl border border-zinc-800" />
+                            {selectedAsset.type === 'IMAGE' && (
+                <img 
+                  src={selectedAsset.data} 
+                  alt="Expanded Asset" 
+                  className="w-full rounded-2xl shadow-xl border border-zinc-800" 
+                  onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1024"; }}
+                />
               )}
               {selectedAsset.type === 'MUSIC' && (
                 <div className="w-full flex flex-col items-center space-y-8 py-8">
                   <div className="p-8 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
                     <Music className="w-20 h-20 text-emerald-400" />
                   </div>
-                  <audio controls autoPlay className="w-full px-4" src={selectedAsset.data} />
+                  <audio key={selectedAsset.data} controls autoPlay className="w-full px-4" src={selectedAsset.data} />
                 </div>
               )}
               {selectedAsset.type === 'VIDEO' && (
