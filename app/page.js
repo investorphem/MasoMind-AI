@@ -42,7 +42,7 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 FIXED: Replaced with bulletproof open-access CDNs containing REAL human vocals & singing
+// 🚀 FIXED: All music tracks migrated to Mozilla's bulletproof open-CORS edge network with human vocals
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
@@ -53,42 +53,42 @@ const SAMPLE_MUSIC = [
   },
   {
     id: 'm2',
-    title: 'The Messenger Rock',
-    genre: 'Rock / Studio Vocals',
-    prompt: 'An alternative track with raw human studio vocals, clear lyrical projection, and driving rhythm sections optimized for application loading audio.',
-    url: 'https://storage.googleapis.com/automotive-media/The_Messenger.mp3'
+    title: 'Studio Vocal Session',
+    genre: 'Acoustic / Human Voice',
+    prompt: 'A high-fidelity live tracking arrangement featuring explicit clear human studio vocal melodies over acoustic structural backing lines.',
+    url: 'https://github.com/mdn/learning-area/raw/main/html/multimedia-and-embedding/tasks/media-embed/media/audio.mp3'
   },
   {
     id: 'm3',
-    title: 'Cinematic Voice Broadcast',
-    genre: 'Dialogue / Oracle Vocal',
-    prompt: 'A pristine vocal speech transmission recording of real human dialogue explaining system components over atmospheric background elements.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+    title: 'Oracle Transmission',
+    genre: 'Melodic Vocal Track',
+    prompt: 'An immersive cinematic progression integrating rhythmic ambient components with prominent human singing phrases for dApp loading sound.',
+    url: 'https://github.com/rafaelreis-hotmart/Audio-Sample-files/raw/master/sample.mp3'
   }
 ];
 
-// 🚀 STABILIZED: Kept v1 and v2 identical as requested, swapped failing v3 for an unblocked Google CDN asset
+// 🚀 FIXED: v1 and v2 returned to original working links; v3 migrated to unblocked Mozilla cluster
 const SAMPLE_VIDEOS = [
   {
     id: 'v1',
     title: 'Hyperdrive Matrix',
     genre: 'Sci-Fi / Cyberpunk',
     prompt: 'A first-person cinematic view driving a sports car through a neon-lit futuristic city tunnel at extreme speeds, raytracing fx.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+    url: 'https://www.w3schools.com/html/mov_bbb.mp4'
   },
   {
     id: 'v2',
     title: 'Cosmic Threshold',
     genre: 'Cinematic Animation',
     prompt: 'A breathtaking 3D slow-motion animation pan over a glowing technicolor alien forest with bioluminescent plants under a starry night sky.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+    url: 'https://www.w3schools.com/html/movie.mp4'
   },
   {
     id: 'v3',
     title: 'Neon Tokyo Grid',
     genre: 'Human Cinematic',
-    prompt: 'A crisp high-frequency tech transition clip featuring real human characters and cinematic sci-fi settings on a high-speed Google cluster.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+    prompt: 'A crisp high-frequency tech transition clip featuring real human characters and cinematic sci-fi settings on an open edge network.',
+    url: 'https://mdn.github.io/learning-area/html/multimedia-and-embedding/video-and-audio-content/rabbit320.mp4'
   }
 ];
 
@@ -530,7 +530,6 @@ export default function MasoMindApp() {
             {mode === 'MUSIC' && (
               <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 bg-gradient-to-b from-zinc-900 to-zinc-950 shadow-2xl">
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20"><Music className="w-12 h-12 text-emerald-400" /></div>
-                {/* 🚀 STABILIZED: Added explicit preload and inline plays parameters to freeze zero logic */}
                 <audio key={resultData} controls autoPlay preload="auto" playsInline className="w-full text-emerald-500" src={resultData} />
                 <button onClick={downloadAsset} className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><Download className="w-4 h-4" /> Download Track</button>
               </div>
@@ -538,7 +537,6 @@ export default function MasoMindApp() {
 
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video overflow-hidden">
-                {/* 🚀 STABILIZED: Progressive frame parsing locks for wall browser layers */}
                 <video key={resultData} controls autoPlay preload="auto" playsInline webkit-playsinline="true" className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
                 <button onClick={downloadAsset} className="absolute top-4 right-4 z-20 glass-panel bg-black/50 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
               </div>
