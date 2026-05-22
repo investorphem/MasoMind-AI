@@ -9,45 +9,79 @@ export async function GET(req) {
 
     if (!url) return new NextResponse("Missing URL", { status: 400 });
 
-    // 🚀 THE FIREWALL BYPASS
-    // We must trick Mixkit into thinking this request is coming from their own website
+    // 🚀 BYPASS THE FIREWALL - Real browser headers
     const remoteRes = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': '*/*',
-        'Referer': 'https://mixkit.co/', // This tells Mixkit the request originated from their site
+        'Referer': 'https://mixkit.co/',
         'Origin': 'https://mixkit.co'
       }
     });
 
     if (!remoteRes.ok) {
-        console.error(`Media firewall blocked request: ${remoteRes.status} ${remoteRes.statusText}`);
-        return new NextResponse(`Media provider blocked the request: ${remoteRes.status}`, { status: 403 });
+        console.error(`Media firewall blocked request: ${remoteRes.status}`);
+        return new NextResponse(`Media provider blocked request: ${remoteRes.status}`, { status: 403 });
     }
 
-    // Strip their restrictive headers so MiniPay accepts the stream
-    const headers = new Headers(remoteRes.headers);
-    headers.delete('x-frame-options');
-    headers.delete('content-security-policy');
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Read the complete binary data into memory so we can manipulate chunks
+    const arrayBuffer = await remoteRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentLength = buffer.length;
+
+    // Parse incoming Content-Type or fall back dynamically
+    const contentType = remoteRes.headers.get('content-type') || 
+                        (url.endsWith('.mp3') ? 'audio/mpeg' : url.endsWith('.mp4') ? 'video/mp4' : 'application/octet-stream');
 
     let ext = '.bin';
-    const contentType = headers.get('content-type') || '';
     if (contentType.includes('audio')) ext = '.mp3';
     if (contentType.includes('video')) ext = '.mp4';
     if (contentType.includes('image')) ext = '.png';
 
+    // Base cross-origin headers to defeat CORS inside mobile wallets
+    const baseHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Content-Type': contentType,
+      'Accept-Ranges': 'bytes' // Crucial: Tells the browser it CAN ask for parts of this file
+    };
+
     if (action === 'download') {
-      headers.set('Content-Disposition', `attachment; filename="MasoMind-Asset${ext}"`);
+      baseHeaders['Content-Disposition'] = `attachment; filename="MasoMind-Asset${ext}"`;
     } else {
-      headers.set('Content-Disposition', 'inline');
+      baseHeaders['Content-Disposition'] = 'inline';
     }
 
-    // Stream the raw byte data back to the frontend
-    return new NextResponse(remoteRes.body, {
+    // 🎯 CRITICAL FIX: Handle Video/Audio Streaming Range Requests
+    const rangeHeader = req.headers.get('range');
+    
+    if (rangeHeader && !contentType.includes('image')) {
+      const parts = rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : contentLength - 1;
+      
+      const chunksize = (end - start) + 1;
+      const slicedBuffer = buffer.subarray(start, end + 1);
+
+      const responseHeaders = new Headers(baseHeaders);
+      responseHeaders.set('Content-Range', `bytes ${start}-${end}/${contentLength}`);
+      responseHeaders.set('Content-Length', chunksize.toString());
+
+      return new NextResponse(slicedBuffer, {
+        status: 206, // 206 Partial Content tells the player to start streaming instantly!
+        headers: responseHeaders
+      });
+    }
+
+    // Regular fallback response for complete files (like Images)
+    const standardHeaders = new Headers(baseHeaders);
+    standardHeaders.set('Content-Length', contentLength.toString());
+    
+    return new NextResponse(buffer, {
       status: 200,
-      headers
+      headers: standardHeaders
     });
 
   } catch (error) {
@@ -57,7 +91,7 @@ export async function GET(req) {
 }
 
 // ---------------------------------------------------------
-// POST METHOD (For handling Base64 text downloads)
+// POST METHOD (For handling Base64 text downloads - Left untouched as it works fine)
 // ---------------------------------------------------------
 export async function POST(req) {
   try {
