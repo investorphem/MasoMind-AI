@@ -7,7 +7,6 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 
 export const maxDuration = 60; 
 
-// 🚀 UPDATED: New Contract Address
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
@@ -46,12 +45,12 @@ const DELIVERY_ABI = [{
   ]
 }];
 
+// 🎯 FIX: Swapped hotlink-protected Mixkit URLs for unblocked, range-supporting media layers
 const CINEMATIC_VIDEOS = {
-  cyberpunk: "https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-traffic-in-the-rain-31627-large.mp4",
-  nature: "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beautiful-green-forest-4375-large.mp4",
-  space: "https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4",
-  car: "https://assets.mixkit.co/videos/preview/mixkit-driving-a-car-through-a-futuristic-tunnel-31631-large.mp4",
-  default: "https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-a-blue-and-pink-wave-31613-large.mp4"
+  cyberpunk: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  nature: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  car: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  default: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
 };
 
 export async function POST(req) {
@@ -98,10 +97,9 @@ export async function POST(req) {
     // 3. AI GENERATION ROUTER
     let mediaUrl = CINEMATIC_VIDEOS.default;
     const cleanPrompt = prompt.toLowerCase();
-    if (cleanPrompt.includes('cyber') || cleanPrompt.includes('city')) mediaUrl = CINEMATIC_VIDEOS.cyberpunk;
-    else if (cleanPrompt.includes('forest') || cleanPrompt.includes('nature')) mediaUrl = CINEMATIC_VIDEOS.nature;
-    else if (cleanPrompt.includes('space') || cleanPrompt.includes('star')) mediaUrl = CINEMATIC_VIDEOS.space;
-    else if (cleanPrompt.includes('car') || cleanPrompt.includes('race')) mediaUrl = CINEMATIC_VIDEOS.car;
+    if (cleanPrompt.includes('cyber') || cleanPrompt.includes('city') || cleanPrompt.includes('neon')) mediaUrl = CINEMATIC_VIDEOS.cyberpunk;
+    else if (cleanPrompt.includes('forest') || cleanPrompt.includes('nature') || cleanPrompt.includes('mountain')) mediaUrl = CINEMATIC_VIDEOS.nature;
+    else if (cleanPrompt.includes('car') || cleanPrompt.includes('drive') || cleanPrompt.includes('race')) mediaUrl = CINEMATIC_VIDEOS.car;
 
     // 4. DELIVERY
     await supabase.from('transactions').update({ status: 'COMPLETED', result_data: mediaUrl }).eq('tx_hash', txHash);
@@ -114,7 +112,7 @@ export async function POST(req) {
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, `Video Settled: ${prompt.substring(0, 15)}...`]
+          args: [userAddress, `Video Ready: ${mediaUrl.substring(0, 30)}...`]
         });
         await sendTelegramNotification(`✅ *AI Delivery Successful*\nUser: \`${userAddress}\`\nPrompt: "${prompt}"`);
       } catch (err) { console.error("Delivery failed:", err); }
