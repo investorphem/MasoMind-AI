@@ -67,20 +67,28 @@ const SAMPLE_MUSIC = [
   }
 ];
 
+// 🚀 FIXED: Upgraded array to feature 3 Range-Compliant Video Vectors
 const SAMPLE_VIDEOS = [
   {
     id: 'v1',
-    title: 'Hyperdrive Matrix',
+    title: 'Neon Tokyo Grid',
     genre: 'Sci-Fi / Cyberpunk',
-    prompt: 'A first-person cinematic view driving a sports car through a neon-lit futuristic city tunnel at extreme speeds, raytracing fx.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+    prompt: 'A cinematic drone shot moving through a neon-lit futuristic city street at midnight with flying vehicles and glowing holographic billboards.',
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
   },
   {
     id: 'v2',
-    title: 'Cosmic Threshold',
-    genre: 'Cinematic Animation',
-    prompt: 'A breathtaking 3D slow-motion animation pan over a glowing technicolor alien forest with bioluminescent plants under a starry night sky.',
+    title: 'Bioluminescent Valley',
+    genre: 'Cinematic Nature',
+    prompt: 'A sweeping aerial view of a dense, glowing emerald forest canvas with misty mountain backdrops under ambient twilight rays.',
     url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+  },
+  {
+    id: 'v3',
+    title: 'Hyperdrive Ignition',
+    genre: 'Action / Motorsport',
+    prompt: 'A close-up high-speed tracking shot of a futuristic sports car racing through an illuminated neon subway station lane, extreme motion blur.',
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
   }
 ];
 
