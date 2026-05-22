@@ -5,10 +5,10 @@ import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
 import { sendTelegramNotification } from '../../../lib/telegram';
 
-const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+// 🚀 UPDATED: New Contract Address
+const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
-// 🚀 ENTERPRISE RPC CONFIGURATION
 const celoTransports = fallback([
   http('https://forno.celo.org'),
   http('https://rpc.celo-community.org'),
@@ -88,131 +88,66 @@ export async function POST(req) {
     const togetherApiKey = process.env.TOGETHER_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
-    if (!togetherApiKey) throw new Error("TOGETHER_API_KEY is missing");
-
     let enhancedPrompt = prompt; 
     try {
         const analyzeResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: `You are a master Midjourney and Flux prompt engineer. A user wants to generate an image based on this input: "${prompt}". 
-                        First, determine the intent:
-                        - If it's a logo or UI, write a prompt emphasizing minimalist, modern vector graphics, clean background, abstract tech vibes. Do not include literal people.
-                        - If it's a photograph, write a prompt emphasizing 8k resolution, cinematic lighting, photorealism, shot on 35mm lens.
-                        - If it's an illustration, write a prompt emphasizing vibrant colors, detailed line art, digital painting style.
-                        Return ONLY the highly detailed, professional image generation prompt. No conversational text. No explanations.`
-                    }]
-                }]
+                contents: [{ parts: [{ text: `Act as a master Flux prompt engineer. Transform this: "${prompt}" into a detailed image generation prompt. Output ONLY the prompt.` }] }]
             })
         });
-
         if (analyzeResponse.ok) {
             const analyzeData = await analyzeResponse.json();
-            if (analyzeData.candidates?.[0]?.content?.parts?.[0]?.text) {
-                enhancedPrompt = analyzeData.candidates[0].content.parts[0].text.trim();
-            }
+            enhancedPrompt = analyzeData.candidates?.[0]?.content?.parts?.[0]?.text.trim() || prompt;
         }
-    } catch (e) {
-        console.warn("Analyzer skipped, using raw prompt:", e.message);
-    }
+    } catch (e) { console.warn("Analyzer skipped"); }
 
     const aiResponse = await fetch('https://api.together.xyz/v1/images/generations', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${togetherApiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${togetherApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: "black-forest-labs/FLUX.1-schnell",
         prompt: enhancedPrompt, 
-        width: 1024,
-        height: 1024,
-        steps: 4,
-        n: 1,
-        response_format: "url"
+        width: 1024, height: 1024, steps: 4, n: 1, response_format: "url"
       })
     });
 
-    if (!aiResponse.ok) {
-        const errorData = await aiResponse.json();
-        throw new Error(`Together API Error: ${errorData.error?.message || aiResponse.statusText}`);
-    }
-
+    if (!aiResponse.ok) throw new Error("Together API Error");
     const aiData = await aiResponse.json();
     const temporaryImageUrl = aiData.data[0].url;
 
-    if (!temporaryImageUrl) throw new Error("Failed to extract image URL from provider");
-
-    // --- 🚀 PERMANENT CLOUD STORAGE FIX ---
-    let permanentImageUrl = temporaryImageUrl; // Fallback just in case
-
+    // 4. STORAGE & DELIVERY
+    let permanentImageUrl = temporaryImageUrl;
     try {
-        // A. Download the image from Together AI securely
         const imgRes = await fetch(temporaryImageUrl);
-        if (!imgRes.ok) throw new Error("Failed to fetch temporary image");
         const imgBuffer = await imgRes.arrayBuffer();
-
-        // B. Generate a clean, unique filename
         const fileName = `img_${Date.now()}_${txHash.substring(0, 6)}.png`;
+        await supabase.storage.from('vault').upload(fileName, imgBuffer, { contentType: 'image/png' });
+        const { data } = supabase.storage.from('vault').getPublicUrl(fileName);
+        permanentImageUrl = data.publicUrl;
+    } catch (e) { console.error("Storage error:", e); }
 
-        // C. Upload to your Supabase "vault" bucket
-        const { error: uploadError } = await supabase.storage
-            .from('vault')
-            .upload(fileName, imgBuffer, {
-                contentType: 'image/png',
-                upsert: false
-            });
-
-        if (uploadError) throw uploadError;
-
-        // D. Retrieve the permanent public URL
-        const { data: publicUrlData } = supabase.storage
-            .from('vault')
-            .getPublicUrl(fileName);
-
-        permanentImageUrl = publicUrlData.publicUrl;
-    } catch (storageError) {
-        console.error("Supabase Storage Error:", storageError);
-        // If storage fails, we still have the temporary URL so the user isn't stuck
-    }
-    // ----------------------------------------
-
-    // 4. NON-BLOCKING DELIVERY (Using the Permanent URL)
-    await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: permanentImageUrl })
-      .eq('tx_hash', txHash);
+    await supabase.from('transactions').update({ status: 'COMPLETED', result_data: permanentImageUrl }).eq('tx_hash', txHash);
 
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        const summary = `Image Generated: ${prompt.substring(0, 15)}...`;
-
         await agentClient.writeContract({
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summary]
+          args: [userAddress, `Image ready: ${permanentImageUrl.substring(0, 30)}...`]
         });
-        await sendTelegramNotification(`✅ *Premium Image Secured in Vault & Delivered On-Chain*`);
-      } catch (err) {
-        console.error("Background blockchain delivery failed:", err);
-      }
+        await sendTelegramNotification(`✅ *Premium Image Delivered*`);
+      } catch (err) { console.error("Delivery failed:", err); }
     })();
 
-    // Return the Permanent URL to the frontend
     return NextResponse.json({ imageUrl: permanentImageUrl });
-
   } catch (error) {
     console.error("Image API Error:", error);
-
-    if (globalTxHash) {
-        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-    }
-
+    if (globalTxHash) await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
