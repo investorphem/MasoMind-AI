@@ -28,7 +28,6 @@ const PLACEHOLDERS = {
     "Paste Solidity code for gas optimization analysis...",
     "Input multi-sig wallet code for a security review..."
   ],
-  // 🚀 FIXED: Re-added array to feed typing simulation loops
   MUSIC: [
     "An upbeat synthwave track for a racing game...",
     "A lo-fi chill hop beat with soft piano...",
@@ -195,32 +194,42 @@ export default function MasoMindApp() {
     setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
   }, [mode]);
 
-  // 🚀 FIXED: Enabled seamless running across all mode selectors by dropping structural blockers
+  // 🚀 FIXED: Robust typing logic ticker that moves continuously through placeholder arrays
   useEffect(() => {
-    if (pendingState || prompt.length > 0) return;
+    if (pendingState || prompt.length > 0 || (mode === 'MUSIC' && showLyricsInput)) {
+      setPlaceholderText('');
+      return;
+    }
 
     const currentExamples = PLACEHOLDERS[mode];
-    if (!currentExamples) return;
-    const fullText = currentExamples[currentPlaceholderIndex];
-    let typingSpeed = isDeleting ? 30 : 60;
+    if (!currentExamples || currentExamples.length === 0) return;
 
-    const timer = setTimeout(() => {
-      if (!isDeleting && placeholderText === fullText) {
-        setTimeout(() => setIsDeleting(true), 2500);
-      } else if (isDeleting && placeholderText === '') {
-        isDeleting(false);
-        setCurrentPlaceholderIndex((prev) => (prev + 1) % currentExamples.length);
+    let timer;
+    const fullText = currentExamples[currentPlaceholderIndex];
+
+    if (!isDeleting) {
+      if (placeholderText !== fullText) {
+        timer = setTimeout(() => {
+          setPlaceholderText(fullText.substring(0, placeholderText.length + 1));
+        }, 60);
       } else {
-        setPlaceholderText(
-          isDeleting 
-            ? fullText.substring(0, placeholderText.length - 1)
-            : fullText.substring(0, placeholderText.length + 1)
-        );
+        timer = setTimeout(() => {
+          setIsDeleting(true);
+        }, 2500);
       }
-    }, typingSpeed);
+    } else {
+      if (placeholderText !== '') {
+        timer = setTimeout(() => {
+          setPlaceholderText(fullText.substring(0, placeholderText.length - 1));
+        }, 30);
+      } else {
+        setIsDeleting(false);
+        setCurrentPlaceholderIndex((prev) => (prev + 1) % currentExamples.length);
+      }
+    }
 
     return () => clearTimeout(timer);
-  }, [placeholderText, isDeleting, mode, currentPlaceholderIndex, pendingState, prompt]);
+  }, [placeholderText, isDeleting, mode, currentPlaceholderIndex, pendingState, prompt, showLyricsInput]);
 
   const copyToClipboard = () => {
     if (!resultData) return;
@@ -463,7 +472,7 @@ export default function MasoMindApp() {
                  const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
                  const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
                  if (targetConnector) connect({ connector: targetConnector });
-               }} className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium border border-zinc-800">
+               }} className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] border border-zinc-800">
                <Fingerprint className="w-3 h-3 text-emerald-400" /> Connect Wallet
              </button>
           ) : (
@@ -536,13 +545,12 @@ export default function MasoMindApp() {
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video overflow-hidden">
                 <video key={resultData} controls autoPlay preload="auto" playsInline webkit-playsinline="true" className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
-                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
+                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
                 <button onClick={() => setResultData(null)} className="absolute top-4 left-4 z-20 flex items-center gap-1 px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-[10px] font-bold text-zinc-300"><ArrowLeft className="w-3 h-3" /> Eject</button>
               </div>
             )}
           </>
         ) : (
-          /* IDLE CONSOLE ROUTER PANELS */
           <div className="w-full min-h-[350px] rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-6 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
             {isPending || status ? (
@@ -558,14 +566,14 @@ export default function MasoMindApp() {
                   <button onClick={handleRefundFromHome} className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> Request Refund</button>
                </div>
             ) : mode === 'MUSIC' && showLyricsInput ? (
-              /* 🚀 LYRICS PRODUCTION INPUT BLOCKS (Smooth sub-route overlay triggered inside client context) */
+              /* 🚀 LYRICS PRODUCTION INPUT DASHBOARD */
               <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in id-fade duration-300">
                 <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-emerald-400" />
                     <h3 className="text-xs font-bold tracking-widest text-zinc-300 font-mono uppercase">Vocal Setup Console</h3>
                   </div>
-                  <button onClick={() => setShowLyricsInput(false)} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 tracking-wider font-mono">← Standard Mode</button>
+                  <button onClick={() => setShowLyricsInput(false)} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 tracking-wider font-mono">| Standard Mode</button>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -616,7 +624,7 @@ export default function MasoMindApp() {
           </div>
         )}
 
-        {/* 🚀 FIXED PLACEMENT: Optional trigger button strip located entirely outside the main console box */}
+        {/* 🚀 FIXED PLACEMENT: Located entirely underneath the main card layout block */}
         {!resultData && !isPending && !status && mode === 'MUSIC' && !showLyricsInput && (
           <button 
             onClick={() => setShowLyricsInput(true)}
@@ -626,7 +634,7 @@ export default function MasoMindApp() {
           </button>
         )}
 
-        {/* 🚀 HORIZONTAL AUTO-SLIDER ENGINE - Manually scrollable + Autoplay loops dynamically */}
+        {/* 🚀 HORIZONTAL CAROUSEL AUTO-SLIDER ENGINE */}
         {!isPending && !status && (mode === 'MUSIC' || mode === 'VIDEO') && (
           <div className="w-full space-y-3 pt-1">
             <div className="flex items-center gap-2 px-1">
@@ -650,22 +658,17 @@ export default function MasoMindApp() {
                       <span className="text-[10px] font-mono text-zinc-500 block truncate">{sample.genre}</span>
                     </div>
                     <div className="flex gap-1.5">
+                      {/* 🚀 FIXED: Play button strictly triggers streaming without overriding inputs */}
                       <button 
                         onClick={() => {
                           setResultData(sample.url);
-                          if (mode === 'MUSIC') {
-                            setMusicTitle(sample.title);
-                            setMusicGenre(sample.genre);
-                            setMusicLyrics(sample.prompt);
-                          } else {
-                            setPrompt(sample.prompt);
-                          }
                           showToast(`Loaded ${sample.title}!`, "success");
                         }} 
                         className="px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-bold hover:bg-emerald-500/20 transition-colors"
                       >
                         Play
                       </button>
+                      {/* 🚀 FIXED: Use button securely populates text forms */}
                       <button 
                         onClick={() => {
                           if (mode === 'MUSIC') {
@@ -676,7 +679,7 @@ export default function MasoMindApp() {
                           } else {
                             setPrompt(sample.prompt);
                           }
-                          showToast("Copied to console context!", "success");
+                          showToast("Template loaded into dashboard context!", "success");
                         }} 
                         className="px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-[9px] font-bold hover:bg-zinc-700 transition-colors"
                       >
@@ -695,7 +698,7 @@ export default function MasoMindApp() {
       </main>
 
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
-        {/* 🚀 FIXED: The general execute panel displays in standard mode for all selections */}
+        {/* 🚀 FIXED: General execution bar displays continuously for music prompt submission strings */}
         {!showLyricsInput && (
           <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1 mb-6">
             {mode === 'AUDIT' ? (
