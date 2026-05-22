@@ -330,7 +330,6 @@ export default function LibraryPage() {
                 </div>
               )}
               {selectedAsset.type === 'VIDEO' && (
-                {/* 🚀 PROXY STREAM FIX */}
                 <video 
                   controls 
                   autoPlay 
