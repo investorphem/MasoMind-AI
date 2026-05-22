@@ -7,7 +7,7 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 
 export const maxDuration = 60; 
 
-// 🚀 UPDATED: New Contract Address
+// 🚀 UPDATED: Valid Contract Address Configuration
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
@@ -46,12 +46,13 @@ const DELIVERY_ABI = [{
   ]
 }];
 
+// 🎯 FIX: Swapped out hotlink-protected Mixkit assets for unblocked vectors that stream everywhere
 const PREMIUM_LOOPS = {
-  synthwave: "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
-  lofi: "https://assets.mixkit.co/music/preview/mixkit-lounge-guitars-153.mp3",
-  orchestral: "https://assets.mixkit.co/music/preview/mixkit-epic-heroic-orchestral-292.mp3",
-  electronic: "https://assets.mixkit.co/music/preview/mixkit-complex-electro-synth-loop-80.mp3",
-  default: "https://assets.mixkit.co/music/preview/mixkit-deep-urban-62.mp3"
+  synthwave: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+  lofi: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+  orchestral: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+  electronic: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+  default: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
 };
 
 export async function POST(req) {
@@ -116,7 +117,7 @@ export async function POST(req) {
           args: [userAddress, `Music Settled: ${mediaUrl.substring(0, 30)}...`]
         });
         await sendTelegramNotification(`✅ *Premium Music Track Settled On-Chain*`);
-      } catch (err) { console.error("Delivery failed:", err); }
+      } catch (err) { console.error("Background blockchain delivery failed:", err); }
     })();
 
     return NextResponse.json({ mediaUrl });
