@@ -67,7 +67,7 @@ export default function MasoMindApp() {
   // 🚀 PREMIUM NOTIFICATION STATE
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
-  const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+  const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 
   // 🚀 CUSTOM TOAST FUNCTION
   const showToast = (message, type = 'success') => {
