@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, http, parseUnits, formatUnits } from 'viem'; 
 import { celo } from 'viem/chains';
-import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle, Sparkles, ArrowLeft } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -28,6 +28,12 @@ const PLACEHOLDERS = {
     "Paste Solidity code for gas optimization analysis...",
     "Input multi-sig wallet code for a security review..."
   ],
+  MUSIC: [
+    "An upbeat synthwave track for a racing game...",
+    "A lo-fi chill hop beat with soft piano...",
+    "Cinematic orchestral music for a boss battle...",
+    "A fast-paced electronic dance track..."
+  ],
   VIDEO: [
     "A cinematic drone shot over a glowing forest...",
     "A 3D animation of a futuristic city building...",
@@ -36,7 +42,7 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 BULLETPROOF TEST SHOWCASES (Supports instant cross-origin byte streaming)
+// 🚀 ENTERPRISE VECTORS (Featuring Real Human Vocalist Hooks & Open Partial Chunk Support)
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
@@ -47,41 +53,42 @@ const SAMPLE_MUSIC = [
   },
   {
     id: 'm2',
-    title: 'Studio Vocal Session',
-    genre: 'Acoustic / Human Voice',
-    prompt: 'A high-fidelity live tracking arrangement featuring explicit clear human studio vocal melodies over acoustic structural backing lines.',
+    title: 'Studio Chorus Session',
+    genre: 'R&B / Soul Harmonies',
+    prompt: 'A warm acoustic arrangement layered with multi-tracked human vocal execution, clear spoken elements, and organic production backings.',
     url: 'https://github.com/mdn/learning-area/raw/main/html/multimedia-and-embedding/tasks/media-embed/media/audio.mp3'
   },
   {
     id: 'm3',
-    title: 'Oracle Transmission',
-    genre: 'Melodic Vocal Track',
-    prompt: 'An immersive cinematic progression integrating rhythmic ambient components with prominent human singing phrases for dApp loading sound.',
+    title: 'Oracle Vocal Transmission',
+    genre: 'Pop / Speech Narrative',
+    prompt: 'An immersive cinematic progression integrating melodic components with high-fidelity real human singing voice lines for dApp lore execution.',
     url: 'https://github.com/rafaelreis-hotmart/Audio-Sample-files/raw/master/sample.mp3'
   }
 ];
 
+// 🚀 HIGH-COMPATIBILITY DIGITAL CONTAINERS (Optimized to play instantly in all desktop/wallet views)
 const SAMPLE_VIDEOS = [
   {
     id: 'v1',
     title: 'Hyperdrive Matrix',
     genre: 'Sci-Fi / Cyberpunk',
     prompt: 'A first-person cinematic view driving a sports car through a neon-lit futuristic city tunnel at extreme speeds, raytracing fx.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
   },
   {
     id: 'v2',
     title: 'Cosmic Threshold',
     genre: 'Cinematic Animation',
     prompt: 'A breathtaking 3D slow-motion animation pan over a glowing technicolor alien forest with bioluminescent plants under a starry night sky.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
   },
   {
     id: 'v3',
     title: 'Neon Tokyo Grid',
     genre: 'Human Cinematic',
     prompt: 'A crisp high-frequency tech transition clip featuring real human characters and cinematic sci-fi settings on an open edge network.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
   }
 ];
 
@@ -101,7 +108,8 @@ export default function MasoMindApp() {
   const [status, setStatus] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // 🚀 DYNAMIC LYRICS PRODUCTION STATES
+  // Lyrics Interface Console Management States
+  const [showLyricsInput, setShowLyricsInput] = useState(false);
   const [musicTitle, setMusicTitle] = useState('');
   const [musicGenre, setMusicGenre] = useState('');
   const [musicLyrics, setMusicLyrics] = useState('');
@@ -114,9 +122,7 @@ export default function MasoMindApp() {
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
-  // Carousel Tracking References
   const carouselRef = useRef(null);
-
   const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 
   const showToast = (message, type = 'success') => {
@@ -124,7 +130,7 @@ export default function MasoMindApp() {
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
   };
 
-  // 🚀 AUTOMATED SCROLLING ENGINE FOR HORIZONTAL CAROUSELS
+  // Horizontal Automated Carousel Slider Thread
   useEffect(() => {
     if (isPending || status !== '') return;
     const scrollTrack = carouselRef.current;
@@ -135,7 +141,7 @@ export default function MasoMindApp() {
       if (scrollTrack.scrollLeft >= maxScrollPosition - 10) {
         scrollTrack.scrollTo({ left: 0, behavior: 'smooth' });
       } else {
-        scrollTrack.scrollBy({ left: 300, behavior: 'smooth' });
+        scrollTrack.scrollBy({ left: 290, behavior: 'smooth' });
       }
     }, 3500);
 
@@ -183,9 +189,9 @@ export default function MasoMindApp() {
     setCurrentPlaceholderIndex(0);
     setPlaceholderText('');
     setIsDeleting(false);
-    if (mode !== 'MUSIC') {
-      setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
-    }
+    setResultData(null);
+    setShowLyricsInput(false);
+    setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
   }, [mode]);
 
   useEffect(() => {
@@ -309,11 +315,10 @@ export default function MasoMindApp() {
   };
 
   const executeService = async () => {
-    // 🚀 DYNAMIC COMPOSITE PROMPT FOR LYRICS ENGINE
     let finalPromptToSubmit = prompt;
-    if (mode === 'MUSIC') {
+    if (mode === 'MUSIC' && showLyricsInput) {
       if (!musicTitle || !musicGenre || !musicLyrics) {
-        showToast("Please fill all Studio configuration inputs.", "error");
+        showToast("Please complete your layout data configuration forms.", "error");
         return;
       }
       finalPromptToSubmit = `MUSIC REQUEST - Title: "${musicTitle}" | Genre/Style: "${musicGenre}" | Custom Input Lyrics: [${musicLyrics}]`;
@@ -504,10 +509,10 @@ export default function MasoMindApp() {
 
         {!pendingState && (
           <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
-            <button onClick={() => { setMode('IMAGE'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
-            <button onClick={() => { setMode('AUDIT'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
-            <button onClick={() => { setMode('MUSIC'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
-            <button onClick={() => { setMode('VIDEO'); setResultData(null); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
+            <button onClick={() => { setMode('IMAGE'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
+            <button onClick={() => { setMode('AUDIT'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
+            <button onClick={() => { setMode('MUSIC'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
+            <button onClick={() => { setMode('VIDEO'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
           </div>
         )}
       </header>
@@ -515,20 +520,19 @@ export default function MasoMindApp() {
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto space-y-6">
         {resultData ? (
           <>
+            {/* ACTIVE RESULT INTERFACE DISPLAY PANELS */}
             {mode === 'IMAGE' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square">
                 <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px]" />
                 <button onClick={downloadAsset} className="absolute bottom-4 right-4 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
+                <button onClick={() => setResultData(null)} className="absolute top-4 left-4 flex items-center gap-1 px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-[10px] font-bold text-zinc-300"><ArrowLeft className="w-3 h-3" /> Eject</button>
               </div>
             )}
 
             {mode === 'AUDIT' && (
               <div className="w-full flex flex-col h-[450px] rounded-3xl glass-panel border border-zinc-800/50 shadow-2xl relative overflow-hidden bg-zinc-950/90">
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
-                  <div className="flex items-center gap-2">
-                    <Code className="w-5 h-5 text-emerald-400" />
-                    <div><h3 className="text-xs font-bold text-zinc-100 tracking-wider">SECURITY REPORT</h3></div>
-                  </div>
+                  <button onClick={() => setResultData(null)} className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-[10px] font-bold text-zinc-400"><ArrowLeft className="w-3 h-3" /> Back</button>
                   <div className="flex items-center gap-2">
                     <button onClick={copyToClipboard} className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-xs font-medium text-zinc-300">{copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />} {copied ? 'Copied!' : 'Copy'}</button>
                     <button onClick={downloadAsset} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs font-medium text-emerald-400"><Download className="w-3.5 h-3.5" /> MD</button>
@@ -542,18 +546,23 @@ export default function MasoMindApp() {
               <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 bg-gradient-to-b from-zinc-900 to-zinc-950 shadow-2xl">
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20"><Music className="w-12 h-12 text-emerald-400" /></div>
                 <audio key={resultData} controls autoPlay preload="auto" playsInline className="w-full text-emerald-500" src={resultData} />
-                <button onClick={downloadAsset} className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><Download className="w-4 h-4" /> Download Track</button>
+                <div className="w-full grid grid-cols-2 gap-2.5">
+                  <button onClick={() => { setResultData(null); setShowLyricsInput(false); }} className="py-3 bg-zinc-950 border border-zinc-800 text-zinc-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Dashboard</button>
+                  <button onClick={downloadAsset} className="py-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"><Download className="w-3.5 h-3.5" /> Download</button>
+                </div>
               </div>
             )}
 
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video overflow-hidden">
                 <video key={resultData} controls autoPlay preload="auto" playsInline webkit-playsinline="true" className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
-                <button onClick={downloadAsset} className="absolute top-4 right-4 z-20 glass-panel bg-black/50 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
+                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
+                <button onClick={() => setResultData(null)} className="absolute top-4 left-4 z-20 flex items-center gap-1 px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-[10px] font-bold text-zinc-300"><ArrowLeft className="w-3 h-3" /> Eject</button>
               </div>
             )}
           </>
         ) : (
+          /* IDLE CONSOLE ROUTER PANELS */
           <div className="w-full min-h-[360px] rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-6 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
             {isPending || status ? (
@@ -568,12 +577,15 @@ export default function MasoMindApp() {
                   <p className="text-xs text-zinc-400 text-center mb-6 px-4">The payment processed, but AI failed to complete. Retry below without paying again, or request a refund.</p>
                   <button onClick={handleRefundFromHome} className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> Request Refund</button>
                </div>
-            ) : mode === 'MUSIC' ? (
-              /* 🚀 UPGRADED: Dynamic Lyrics Studio Console instead of basic blank box */
-              <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in fade-in duration-300">
-                <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-xs font-bold tracking-widest text-zinc-300 font-mono uppercase">Vocal Generation Console</h3>
+            ) : mode === 'MUSIC' && showLyricsInput ? (
+              /* 🚀 LYRICS PRODUCTION INPUT BLOCKS (Smooth sub-route overlay triggered inside client context) */
+              <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in fade-in zoom-in-95 duration-300">
+                <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-xs font-bold tracking-widest text-zinc-300 font-mono uppercase">Vocal Setup Console</h3>
+                  </div>
+                  <button onClick={() => setShowLyricsInput(false)} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 tracking-wider font-mono">← Cancel</button>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -583,7 +595,7 @@ export default function MasoMindApp() {
                   </div>
                   <div className="flex flex-col space-y-1.5">
                     <label className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 font-bold">Vocal Style / Genre</label>
-                    <input type="text" placeholder="e.g., Soulful R&B Singer" value={musicGenre} onChange={(e) => setMusicGenre(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50" />
+                    <input type="text" placeholder="e.g., Soulful Male Singer" value={musicGenre} onChange={(e) => setMusicGenre(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50" />
                   </div>
                 </div>
 
@@ -598,30 +610,44 @@ export default function MasoMindApp() {
                 </div>
               </div>
             ) : (
-              /* Standard Box display layout for Audit, Images & Videos */
-              <div className="relative z-10 flex flex-col items-center">
+              /* STANDARD INITIAL BASE PANEL DASHBOARD */
+              <div className="relative z-10 flex flex-col items-center animate-in fade-in duration-300">
                 <div className="p-5 bg-zinc-900 rounded-2xl border border-zinc-800 mb-4">
                   {mode === 'IMAGE' && <ImageIcon className="w-10 h-10 text-zinc-600" />}
                   {mode === 'AUDIT' && <Code className="w-10 h-10 text-zinc-600" />}
+                  {mode === 'MUSIC' && <Music className="w-10 h-10 text-zinc-600" />}
                   {mode === 'VIDEO' && <Video className="w-10 h-10 text-zinc-600" />}
                 </div>
                 <h3 className="text-zinc-300 font-medium mb-1">
                   {mode === 'IMAGE' && 'Generate Asset'}
                   {mode === 'AUDIT' && 'Smart Contract Audit'}
+                  {mode === 'MUSIC' && 'AI Music Studio'}
                   {mode === 'VIDEO' && 'AI Video Engine'}
                 </h3>
-                <p className="text-xs text-zinc-600 max-w-[240px]">
+                <p className="text-xs text-zinc-600 max-w-[240px] mb-2">
                   {mode === 'IMAGE' && 'Enter an intent below to generate high-fidelity assets.'}
                   {mode === 'AUDIT' && 'Upload Solidity code for an AI security and gas audit.'}
+                  {mode === 'MUSIC' && 'Describe details for an unthrottled high-fidelity music recording.'}
                   {mode === 'VIDEO' && 'Describe a scene or provide a script for video generation.'}
                 </p>
-                <span className="mt-4 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: {mode === 'IMAGE' ? '0.10' : mode === 'VIDEO' ? '1.00' : '0.05'} {activeToken}</span>
+
+                {/* 🚀 TOGGLE LINK PANEL: Prompts the input window smoothly without replacing tab layouts */}
+                {mode === 'MUSIC' && (
+                  <button 
+                    onClick={() => setShowLyricsInput(true)}
+                    className="my-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[11px] font-bold hover:bg-emerald-500/20 transition-all"
+                  >
+                    ✨ Add Custom Lyrics & Titles
+                  </button>
+                )}
+
+                <span className="mt-3 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: {mode === 'IMAGE' ? '0.10' : mode === 'MUSIC' ? '0.50' : mode === 'VIDEO' ? '1.00' : '0.05'} {activeToken}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* 🚀 UPGRADED CAROUSEL SLIDER ENGINE (Auto-scrolls one-by-one + Supports swipe actions) */}
+        {/* 🚀 HORIZONTAL AUTO-SLIDER ENGINE - Manually scrollable + Autoplay loops dynamically */}
         {!isPending && !status && (mode === 'MUSIC' || mode === 'VIDEO') && (
           <div className="w-full space-y-3 pt-2">
             <div className="flex items-center gap-2 px-1">
@@ -629,7 +655,6 @@ export default function MasoMindApp() {
               <h4 className="text-xs font-bold tracking-wider text-zinc-500 uppercase font-mono">Explore Community Showcases</h4>
             </div>
 
-            {/* Scrolling Track Container viewport element */}
             <div 
               ref={carouselRef}
               className="w-full flex flex-row overflow-x-auto gap-3 snap-x snap-mandatory scroll-smooth scrollbar-none pb-2"
@@ -650,6 +675,7 @@ export default function MasoMindApp() {
                         onClick={() => {
                           setResultData(sample.url);
                           if (mode === 'MUSIC') {
+                            setShowLyricsInput(true);
                             setMusicTitle(sample.title);
                             setMusicGenre(sample.genre);
                             setMusicLyrics(sample.prompt);
@@ -658,22 +684,23 @@ export default function MasoMindApp() {
                           }
                           showToast(`Loaded ${sample.title}!`, "success");
                         }} 
-                        className="px-2 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-bold hover:bg-emerald-500/20 transition-colors"
+                        className="px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-bold hover:bg-emerald-500/20 transition-colors"
                       >
                         Play
                       </button>
                       <button 
                         onClick={() => {
                           if (mode === 'MUSIC') {
+                            setShowLyricsInput(true);
                             setMusicTitle(sample.title);
                             setMusicGenre(sample.genre);
                             setMusicLyrics(sample.prompt);
                           } else {
                             setPrompt(sample.prompt);
                           }
-                          showToast("Prompt copied to dashboard console!", "success");
+                          showToast("Copied to console context!", "success");
                         }} 
-                        className="px-2 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-[9px] font-bold hover:bg-zinc-700 transition-colors"
+                        className="px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-[9px] font-bold hover:bg-zinc-700 transition-colors"
                       >
                         Use
                       </button>
@@ -689,7 +716,6 @@ export default function MasoMindApp() {
         )}
       </main>
 
-      {/* Footer view context handles logic validation inputs for regular views */}
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
         {mode !== 'MUSIC' && (
           <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1 mb-6">
@@ -703,7 +729,7 @@ export default function MasoMindApp() {
             )}
             <button onClick={executeService} disabled={!prompt || isPending || status !== ''} className={`absolute right-2 top-2 bottom-2 px-5 font-bold text-xs rounded-xl transition-all disabled:opacity-30 flex items-center justify-center ${pendingState ? 'bg-amber-500 hover:bg-amber-400 text-zinc-900 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
               {pendingState ? 'Retry API' : 'Execute'}
-            </button>
+          </button>
           </div>
         )}
 
