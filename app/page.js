@@ -28,6 +28,7 @@ const PLACEHOLDERS = {
     "Paste Solidity code for gas optimization analysis...",
     "Input multi-sig wallet code for a security review..."
   ],
+  // 🚀 FIXED: Re-added array to feed typing simulation loops
   MUSIC: [
     "An upbeat synthwave track for a racing game...",
     "A lo-fi chill hop beat with soft piano...",
@@ -194,8 +195,9 @@ export default function MasoMindApp() {
     setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
   }, [mode]);
 
+  // 🚀 FIXED: Enabled seamless running across all mode selectors by dropping structural blockers
   useEffect(() => {
-    if (pendingState || prompt.length > 0 || mode === 'MUSIC') return;
+    if (pendingState || prompt.length > 0) return;
 
     const currentExamples = PLACEHOLDERS[mode];
     if (!currentExamples) return;
@@ -408,27 +410,6 @@ export default function MasoMindApp() {
     setPendingState(null); setPrompt('');
   };
 
-  const handleRefundFromHome = async () => {
-    if (!pendingState || !address) return;
-    setStatus('Requesting refund...');
-    try {
-      const res = await fetch('/api/trigger-refund', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ txHash: pendingState.hash, userAddress: address })
-      });
-      if (res.ok) {
-        showToast('Refund request submitted to Treasury.', 'success');
-        clearPendingState();
-      } else {
-        showToast('Failed to request. It may have already been processed.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Network error while requesting refund.', 'error');
-    }
-    setStatus('');
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b] relative">
 
@@ -482,7 +463,7 @@ export default function MasoMindApp() {
                  const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
                  const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
                  if (targetConnector) connect({ connector: targetConnector });
-               }} className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] border border-zinc-800">
+               }} className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium border border-zinc-800">
                <Fingerprint className="w-3 h-3 text-emerald-400" /> Connect Wallet
              </button>
           ) : (
@@ -517,10 +498,9 @@ export default function MasoMindApp() {
         )}
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto space-y-6">
+      <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto space-y-5">
         {resultData ? (
           <>
-            {/* ACTIVE RESULT INTERFACE DISPLAY PANELS */}
             {mode === 'IMAGE' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-square">
                 <img src={resultData} alt="AI Canvas" className="w-full h-full object-cover rounded-[22px]" />
@@ -563,7 +543,7 @@ export default function MasoMindApp() {
           </>
         ) : (
           /* IDLE CONSOLE ROUTER PANELS */
-          <div className="w-full min-h-[360px] rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-6 text-center shadow-2xl relative overflow-hidden">
+          <div className="w-full min-h-[350px] rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-6 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
             {isPending || status ? (
               <div className="space-y-4 flex flex-col items-center relative z-10">
@@ -579,13 +559,13 @@ export default function MasoMindApp() {
                </div>
             ) : mode === 'MUSIC' && showLyricsInput ? (
               /* 🚀 LYRICS PRODUCTION INPUT BLOCKS (Smooth sub-route overlay triggered inside client context) */
-              <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in fade-in zoom-in-95 duration-300">
+              <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in id-fade duration-300">
                 <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-emerald-400" />
                     <h3 className="text-xs font-bold tracking-widest text-zinc-300 font-mono uppercase">Vocal Setup Console</h3>
                   </div>
-                  <button onClick={() => setShowLyricsInput(false)} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 tracking-wider font-mono">← Cancel</button>
+                  <button onClick={() => setShowLyricsInput(false)} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 tracking-wider font-mono">← Standard Mode</button>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -604,14 +584,14 @@ export default function MasoMindApp() {
                   <textarea rows={3} placeholder="Paste or compose the exact human vocal lyrics here..." value={musicLyrics} onChange={(e) => setMusicLyrics(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50 resize-none" />
                 </div>
                 
-                <div className="flex justify-between items-center pt-2">
+                <div className="flex justify-between items-center pt-1">
                   <span className="px-3 py-1 bg-zinc-950 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: 0.50 {activeToken}</span>
-                  <button onClick={executeService} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]">Compile Track</button>
+                  <button onClick={executeService} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all">Compile Track</button>
                 </div>
               </div>
             ) : (
               /* STANDARD INITIAL BASE PANEL DASHBOARD */
-              <div className="relative z-10 flex flex-col items-center animate-in fade-in duration-300">
+              <div className="relative z-10 flex flex-col items-center animate-in id-fade duration-300">
                 <div className="p-5 bg-zinc-900 rounded-2xl border border-zinc-800 mb-4">
                   {mode === 'IMAGE' && <ImageIcon className="w-10 h-10 text-zinc-600" />}
                   {mode === 'AUDIT' && <Code className="w-10 h-10 text-zinc-600" />}
@@ -624,32 +604,31 @@ export default function MasoMindApp() {
                   {mode === 'MUSIC' && 'AI Music Studio'}
                   {mode === 'VIDEO' && 'AI Video Engine'}
                 </h3>
-                <p className="text-xs text-zinc-600 max-w-[240px] mb-2">
+                <p className="text-xs text-zinc-600 max-w-[240px] mb-1">
                   {mode === 'IMAGE' && 'Enter an intent below to generate high-fidelity assets.'}
                   {mode === 'AUDIT' && 'Upload Solidity code for an AI security and gas audit.'}
-                  {mode === 'MUSIC' && 'Describe details for an unthrottled high-fidelity music recording.'}
+                  {mode === 'MUSIC' && 'Instruct the AI below to compose custom vocal synthesis.'}
                   {mode === 'VIDEO' && 'Describe a scene or provide a script for video generation.'}
                 </p>
-
-                {/* 🚀 TOGGLE LINK PANEL: Prompts the input window smoothly without replacing tab layouts */}
-                {mode === 'MUSIC' && (
-                  <button 
-                    onClick={() => setShowLyricsInput(true)}
-                    className="my-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[11px] font-bold hover:bg-emerald-500/20 transition-all"
-                  >
-                    ✨ Add Custom Lyrics & Titles
-                  </button>
-                )}
-
                 <span className="mt-3 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: {mode === 'IMAGE' ? '0.10' : mode === 'MUSIC' ? '0.50' : mode === 'VIDEO' ? '1.00' : '0.05'} {activeToken}</span>
               </div>
             )}
           </div>
         )}
 
+        {/* 🚀 FIXED PLACEMENT: Optional trigger button strip located entirely outside the main console box */}
+        {!resultData && !isPending && !status && mode === 'MUSIC' && !showLyricsInput && (
+          <button 
+            onClick={() => setShowLyricsInput(true)}
+            className="w-full py-3.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-400 border border-emerald-500/20 rounded-2xl text-xs font-bold transition-all tracking-wide animate-in fade-in"
+          >
+            ✨ Add Custom Lyrics, Title & Genre (Optional)
+          </button>
+        )}
+
         {/* 🚀 HORIZONTAL AUTO-SLIDER ENGINE - Manually scrollable + Autoplay loops dynamically */}
         {!isPending && !status && (mode === 'MUSIC' || mode === 'VIDEO') && (
-          <div className="w-full space-y-3 pt-2">
+          <div className="w-full space-y-3 pt-1">
             <div className="flex items-center gap-2 px-1">
               <Library className="w-4 h-4 text-emerald-400" />
               <h4 className="text-xs font-bold tracking-wider text-zinc-500 uppercase font-mono">Explore Community Showcases</h4>
@@ -675,7 +654,6 @@ export default function MasoMindApp() {
                         onClick={() => {
                           setResultData(sample.url);
                           if (mode === 'MUSIC') {
-                            setShowLyricsInput(true);
                             setMusicTitle(sample.title);
                             setMusicGenre(sample.genre);
                             setMusicLyrics(sample.prompt);
@@ -717,7 +695,8 @@ export default function MasoMindApp() {
       </main>
 
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
-        {mode !== 'MUSIC' && (
+        {/* 🚀 FIXED: The general execute panel displays in standard mode for all selections */}
+        {!showLyricsInput && (
           <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1 mb-6">
             {mode === 'AUDIT' ? (
               <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))} rows={2} disabled={!!pendingState} className="w-full pl-4 pr-32 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none disabled:opacity-50" />
@@ -729,7 +708,7 @@ export default function MasoMindApp() {
             )}
             <button onClick={executeService} disabled={!prompt || isPending || status !== ''} className={`absolute right-2 top-2 bottom-2 px-5 font-bold text-xs rounded-xl transition-all disabled:opacity-30 flex items-center justify-center ${pendingState ? 'bg-amber-500 hover:bg-amber-400 text-zinc-900 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
               {pendingState ? 'Retry API' : 'Execute'}
-          </button>
+            </button>
           </div>
         )}
 
