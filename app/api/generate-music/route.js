@@ -7,7 +7,8 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 
 export const maxDuration = 60; 
 
-const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+// 🚀 UPDATED: New Contract Address
+const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
 const celoTransports = fallback([
@@ -45,7 +46,6 @@ const DELIVERY_ABI = [{
   ]
 }];
 
-// High-fidelity, premium loop assets optimized for GameFi prompts
 const PREMIUM_LOOPS = {
   synthwave: "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
   lofi: "https://assets.mixkit.co/music/preview/mixkit-lounge-guitars-153.mp3",
@@ -60,7 +60,7 @@ export async function POST(req) {
   try {
     const { prompt, txHash } = await req.json();
     if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
-    
+
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
@@ -94,53 +94,35 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. 🚀 ADAPTIVE GENERATION ROUTER
+    // 3. ADAPTIVE GENERATION ROUTER
     let mediaUrl = PREMIUM_LOOPS.default;
     const cleanPrompt = prompt.toLowerCase();
+    if (cleanPrompt.includes('synth') || cleanPrompt.includes('cyber')) mediaUrl = PREMIUM_LOOPS.synthwave;
+    else if (cleanPrompt.includes('chill') || cleanPrompt.includes('lo-fi')) mediaUrl = PREMIUM_LOOPS.lofi;
+    else if (cleanPrompt.includes('epic') || cleanPrompt.includes('orchestra')) mediaUrl = PREMIUM_LOOPS.orchestral;
+    else if (cleanPrompt.includes('dance') || cleanPrompt.includes('electronic')) mediaUrl = PREMIUM_LOOPS.electronic;
 
-    if (cleanPrompt.includes('synth') || cleanPrompt.includes('cyber') || cleanPrompt.includes('racing')) {
-      mediaUrl = PREMIUM_LOOPS.synthwave;
-    } else if (cleanPrompt.includes('chill') || cleanPrompt.includes('lo-fi') || cleanPrompt.includes('piano')) {
-      mediaUrl = PREMIUM_LOOPS.lofi;
-    } else if (cleanPrompt.includes('epic') || cleanPrompt.includes('orchestra') || cleanPrompt.includes('battle')) {
-      mediaUrl = PREMIUM_LOOPS.orchestral;
-    } else if (cleanPrompt.includes('dance') || cleanPrompt.includes('electronic') || cleanPrompt.includes('beat')) {
-      mediaUrl = PREMIUM_LOOPS.electronic;
-    }
-
-    // 4. NON-BLOCKING DELIVERY
-    await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: mediaUrl })
-      .eq('tx_hash', txHash);
+    // 4. DELIVERY
+    await supabase.from('transactions').update({ status: 'COMPLETED', result_data: mediaUrl }).eq('tx_hash', txHash);
 
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        const summary = `Music Settled: ${prompt.substring(0, 15)}...`;
-
         await agentClient.writeContract({
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summary]
+          args: [userAddress, `Music Settled: ${mediaUrl.substring(0, 30)}...`]
         });
-
         await sendTelegramNotification(`✅ *Premium Music Track Settled On-Chain*`);
-      } catch (err) {
-        console.error("Background blockchain delivery failed:", err);
-      }
+      } catch (err) { console.error("Delivery failed:", err); }
     })();
 
     return NextResponse.json({ mediaUrl });
-
   } catch (error) {
     console.error("Music API Error:", error);
-    
-    if (globalTxHash) {
-        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-    }
-    
+    if (globalTxHash) await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
