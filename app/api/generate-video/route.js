@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-// 🚀 ADDED 'formatUnits' to decode the exact crypto amount for Telegram
 import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, formatUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
@@ -8,7 +7,8 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 
 export const maxDuration = 60; 
 
-const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+// 🚀 UPDATED: New Contract Address
+const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
 const celoTransports = fallback([
@@ -18,7 +18,6 @@ const celoTransports = fallback([
   http('https://celo.drpc.org')
 ]);
 
-// Added symbols so Telegram knows exactly which coin was spent
 const TOKENS = {
   '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'cUSD' },
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
@@ -57,7 +56,7 @@ const CINEMATIC_VIDEOS = {
 
 export async function POST(req) {
   let globalTxHash = null; 
-  let paymentDetails = null; // Used to pass data to the failure notification
+  let paymentDetails = null;
 
   try {
     const { prompt, txHash } = await req.json();
@@ -83,82 +82,51 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
     const humanAmount = formatUnits(paidAmount, tokenConfig.decimals);
-    
-    // Store for the catch block just in case
     paymentDetails = { amount: humanAmount, symbol: tokenConfig.symbol, service: paidServiceType, user: userAddress };
 
-    // 🚀 STAGE 1: PAYMENT SECURED NOTIFICATION
     await sendTelegramNotification(`💰 *Payment Verified!*\nUser: \`${userAddress}\`\nPaid: ${humanAmount} ${tokenConfig.symbol}\nService: ${paidServiceType}\nStatus: ⏳ Processing AI...`);
 
     // 2. Log to DB
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
-        tx_hash: txHash, 
-        prompt: prompt, 
-        service_type: 'VIDEO', 
-        status: 'PENDING', 
-        user_address: userAddress.toLowerCase(),
-        token_address: paidToken.toLowerCase()
+        tx_hash: txHash, prompt: prompt, service_type: 'VIDEO', status: 'PENDING', 
+        user_address: userAddress.toLowerCase(), token_address: paidToken.toLowerCase()
       }]);
     }
 
     // 3. AI GENERATION ROUTER
     let mediaUrl = CINEMATIC_VIDEOS.default;
     const cleanPrompt = prompt.toLowerCase();
+    if (cleanPrompt.includes('cyber') || cleanPrompt.includes('city')) mediaUrl = CINEMATIC_VIDEOS.cyberpunk;
+    else if (cleanPrompt.includes('forest') || cleanPrompt.includes('nature')) mediaUrl = CINEMATIC_VIDEOS.nature;
+    else if (cleanPrompt.includes('space') || cleanPrompt.includes('star')) mediaUrl = CINEMATIC_VIDEOS.space;
+    else if (cleanPrompt.includes('car') || cleanPrompt.includes('race')) mediaUrl = CINEMATIC_VIDEOS.car;
 
-    if (cleanPrompt.includes('cyber') || cleanPrompt.includes('city') || cleanPrompt.includes('neon')) {
-      mediaUrl = CINEMATIC_VIDEOS.cyberpunk;
-    } else if (cleanPrompt.includes('forest') || cleanPrompt.includes('nature') || cleanPrompt.includes('mountain')) {
-      mediaUrl = CINEMATIC_VIDEOS.nature;
-    } else if (cleanPrompt.includes('space') || cleanPrompt.includes('star') || cleanPrompt.includes('galaxy')) {
-      mediaUrl = CINEMATIC_VIDEOS.space;
-    } else if (cleanPrompt.includes('car') || cleanPrompt.includes('drive') || cleanPrompt.includes('race')) {
-      mediaUrl = CINEMATIC_VIDEOS.car;
-    }
-
-    // 4. NON-BLOCKING DELIVERY
-    await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: mediaUrl })
-      .eq('tx_hash', txHash);
+    // 4. DELIVERY
+    await supabase.from('transactions').update({ status: 'COMPLETED', result_data: mediaUrl }).eq('tx_hash', txHash);
 
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        const summary = `Video Settled: ${prompt.substring(0, 15)}...`;
-
         await agentClient.writeContract({
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summary]
+          args: [userAddress, `Video Settled: ${prompt.substring(0, 15)}...`]
         });
-
-        // 🚀 STAGE 2: AI SUCCESS NOTIFICATION
-        await sendTelegramNotification(`✅ *AI Delivery Successful*\nUser: \`${userAddress}\`\nPrompt: "${prompt}"\nStatus: Asset delivered to Vault.`);
-      } catch (err) {
-        console.error("Background blockchain delivery failed:", err);
-      }
+        await sendTelegramNotification(`✅ *AI Delivery Successful*\nUser: \`${userAddress}\`\nPrompt: "${prompt}"`);
+      } catch (err) { console.error("Delivery failed:", err); }
     })();
 
     return NextResponse.json({ mediaUrl });
-
   } catch (error) {
     console.error("Video API Error:", error);
-
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-        
-        // 🚀 STAGE 3: AI FAILURE NOTIFICATION
-        const p = paymentDetails;
-        if (p) {
-          await sendTelegramNotification(`❌ *AI Engine Crash*\nUser: \`${p.user}\`\nPaid: ${p.amount} ${p.symbol}\nService: ${p.service}\nStatus: Payment secured, but AI failed. Transaction marked FAILED in DB. User may request refund.\nError: ${error.message}`);
-        } else {
-          await sendTelegramNotification(`❌ *System Error*\nTransaction ${globalTxHash} failed.\nError: ${error.message}`);
-        }
+        if (paymentDetails) await sendTelegramNotification(`❌ *AI Engine Crash*\nUser: \`${paymentDetails.user}\`\nStatus: Payment secured, but AI failed. Error: ${error.message}`);
     }
-
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
