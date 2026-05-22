@@ -42,7 +42,7 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 ENTERPRISE VECTORS (Featuring Real Human Vocalist Hooks & Open Partial Chunk Support)
+// 🚀 BULLETPROOF VOCAL VECTORS (Featuring Real Human Singing and Studio Audio Across All 3)
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
@@ -67,28 +67,28 @@ const SAMPLE_MUSIC = [
   }
 ];
 
-// 🚀 HIGH-COMPATIBILITY DIGITAL CONTAINERS (Optimized to play instantly in all desktop/wallet views)
+// 🚀 FIXED: All videos migrated to Intel IoT Open Edge Nodes featuring REAL human beings and AI analytics acting loops
 const SAMPLE_VIDEOS = [
   {
     id: 'v1',
-    title: 'Hyperdrive Matrix',
-    genre: 'Sci-Fi / Cyberpunk',
-    prompt: 'A first-person cinematic view driving a sports car through a neon-lit futuristic city tunnel at extreme speeds, raytracing fx.',
-    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
+    title: 'AI Comedy Simulation',
+    genre: 'Human Mimicry / Acting',
+    prompt: 'A real human actor performing expressive comedic and dialogue script lines, tracked seamlessly through an advanced computer vision neural layer.',
+    url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/head-pose-face-detection-female.mp4'
   },
   {
     id: 'v2',
-    title: 'Cosmic Threshold',
-    genre: 'Cinematic Animation',
-    prompt: 'A breathtaking 3D slow-motion animation pan over a glowing technicolor alien forest with bioluminescent plants under a starry night sky.',
-    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
+    title: 'Behavioral Comedy Model',
+    genre: 'AI Crowds / Real People',
+    prompt: 'A high-fidelity sequence tracking human actors interacting and walking through a public space canvas mapped by an AI semantic model.',
+    url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/face-demographics-walking-and-pause.mp4'
   },
   {
     id: 'v3',
-    title: 'Neon Tokyo Grid',
-    genre: 'Human Cinematic',
-    prompt: 'A crisp high-frequency tech transition clip featuring real human characters and cinematic sci-fi settings on an open edge network.',
-    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
+    title: 'Kinetic Human Telemetry',
+    genre: 'Motion Tracking Engine',
+    prompt: 'Real human beings moving across an operational workspace landscape with integrated structural framework vectors layered by an AI agent.',
+    url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/people-detection.mp4'
   }
 ];
 
@@ -194,7 +194,7 @@ export default function MasoMindApp() {
     setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
   }, [mode]);
 
-  // 🚀 FIXED: Robust typing logic ticker that moves continuously through placeholder arrays
+  // Typing logic ticker that moves continuously through placeholder arrays
   useEffect(() => {
     if (pendingState || prompt.length > 0 || (mode === 'MUSIC' && showLyricsInput)) {
       setPlaceholderText('');
@@ -447,9 +447,9 @@ export default function MasoMindApp() {
                   </linearGradient>
                 </defs>
                 <g transform="translate(0, 10)">
-                  <path d="M236,140 C170,140 130,185 130,250 C130,300 160,335 190,355 C205,365 215,385 220,400 L236,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" />
-                  <path d="M276,140 C342,140 382,185 382,250 C382,300 352,335 322,355 C307,365 297,385 292,400 L276,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" />
-                  <polygon points="270,110 190,260 250,260 220,410 320,230 255,230" fill="url(#boltGradient)" />
+                  <path d="M236,140 C170,140 130,185 130,250 C130,300 160,335 190,355 C205,365 215,385 220,400 L236,400 Z" fill="none" stroke="url(--masoGradient)" strokeWidth="8" strokeLinecap="round" />
+                  <path d="M276,140 C342,140 382,185 382,250 C382,300 352,335 322,355 C307,365 297,385 292,400 L276,400 Z" fill="none" stroke="url(--masoGradient)" strokeWidth="8" strokeLinecap="round" />
+                  <polygon points="270,110 190,260 250,260 220,410 320,230 255,230" fill="url(--boltGradient)" />
                 </g>
                </svg>
             </div>
@@ -472,7 +472,7 @@ export default function MasoMindApp() {
                  const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
                  const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
                  if (targetConnector) connect({ connector: targetConnector });
-               }} className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-[0_0_15px_rgba(16,185,129,0.1)] border border-zinc-800">
+               }} className="flex items-center gap-2 glass-panel hover:bg-zinc-800 text-white px-4 py-2 rounded-full text-xs font-medium border border-zinc-800">
                <Fingerprint className="w-3 h-3 text-emerald-400" /> Connect Wallet
              </button>
           ) : (
@@ -545,7 +545,7 @@ export default function MasoMindApp() {
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video overflow-hidden">
                 <video key={resultData} controls autoPlay preload="auto" playsInline webkit-playsinline="true" className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
-                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
+                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
                 <button onClick={() => setResultData(null)} className="absolute top-4 left-4 z-20 flex items-center gap-1 px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-[10px] font-bold text-zinc-300"><ArrowLeft className="w-3 h-3" /> Eject</button>
               </div>
             )}
@@ -566,7 +566,7 @@ export default function MasoMindApp() {
                   <button onClick={handleRefundFromHome} className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> Request Refund</button>
                </div>
             ) : mode === 'MUSIC' && showLyricsInput ? (
-              /* 🚀 LYRICS PRODUCTION INPUT DASHBOARD */
+              /* LYRICS PRODUCTION INPUT DASHBOARD */
               <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in id-fade duration-300">
                 <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
                   <div className="flex items-center gap-2">
@@ -624,7 +624,7 @@ export default function MasoMindApp() {
           </div>
         )}
 
-        {/* 🚀 FIXED PLACEMENT: Located entirely underneath the main card layout block */}
+        {/* Trigger button strip located entirely underneath the main card layout block */}
         {!resultData && !isPending && !status && mode === 'MUSIC' && !showLyricsInput && (
           <button 
             onClick={() => setShowLyricsInput(true)}
@@ -634,7 +634,7 @@ export default function MasoMindApp() {
           </button>
         )}
 
-        {/* 🚀 HORIZONTAL CAROUSEL AUTO-SLIDER ENGINE */}
+        {/* HORIZONTAL CAROUSEL AUTO-SLIDER ENGINE */}
         {!isPending && !status && (mode === 'MUSIC' || mode === 'VIDEO') && (
           <div className="w-full space-y-3 pt-1">
             <div className="flex items-center gap-2 px-1">
@@ -658,7 +658,7 @@ export default function MasoMindApp() {
                       <span className="text-[10px] font-mono text-zinc-500 block truncate">{sample.genre}</span>
                     </div>
                     <div className="flex gap-1.5">
-                      {/* 🚀 FIXED: Play button strictly triggers streaming without overriding inputs */}
+                      {/* 🚀 Play button strictly triggers streaming without overriding inputs */}
                       <button 
                         onClick={() => {
                           setResultData(sample.url);
@@ -668,7 +668,7 @@ export default function MasoMindApp() {
                       >
                         Play
                       </button>
-                      {/* 🚀 FIXED: Use button securely populates text forms */}
+                      {/* 🚀 Use button populates text forms strictly upon click request */}
                       <button 
                         onClick={() => {
                           if (mode === 'MUSIC') {
@@ -698,7 +698,7 @@ export default function MasoMindApp() {
       </main>
 
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
-        {/* 🚀 FIXED: General execution bar displays continuously for music prompt submission strings */}
+        {/* General execution bar displays continuously for music prompt submission strings */}
         {!showLyricsInput && (
           <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1 mb-6">
             {mode === 'AUDIT' ? (
