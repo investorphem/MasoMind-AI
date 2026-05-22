@@ -5,10 +5,10 @@ import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
 import { sendTelegramNotification } from '../../../lib/telegram';
 
-const CONTRACT_ADDRESS = '0xf5e6bff6cD35833FB9509fd081E5Ca9973fD132f';
+// 🚀 UPDATED: New Contract Address
+const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
-// 🚀 ENTERPRISE RPC CONFIGURATION (Bulletproof Celo Connection)
 const celoTransports = fallback([
   http('https://forno.celo.org'),
   http('https://rpc.celo-community.org'),
@@ -85,14 +85,11 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. 🚀 ENTERPRISE AI AUDIT (Claude 3.5 Sonnet)
+    // 3. 🚀 ENTERPRISE AI AUDIT
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) throw new Error("ANTHROPIC_API_KEY is missing");
 
-    const systemPrompt = `You are an elite Web3 Smart Contract Security Auditor. Analyze the provided Solidity/Web3 code for vulnerabilities (Reentrancy, Access Control, Gas Optimization, Logic Flaws, etc.). 
-    Format your response in highly professional Markdown. 
-    Use clear headings: Executive Summary, Vulnerability Analysis (tagged with CRITICAL, HIGH, MEDIUM, LOW), Gas Optimizations, and Recommended Code Fixes. 
-    Do not hallucinate vulnerabilities. If the code is perfectly secure, state that clearly.`;
+    const systemPrompt = `You are an elite Web3 Smart Contract Security Auditor. Analyze the provided Solidity/Web3 code for vulnerabilities. Format in professional Markdown.`;
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -117,8 +114,6 @@ export async function POST(req) {
     const aiData = await aiResponse.json();
     const report = aiData.content[0].text;
 
-    if (!report) throw new Error("Failed to generate audit report");
-
     // 4. NON-BLOCKING DELIVERY
     await supabase.from('transactions')
       .update({ status: 'COMPLETED', result_data: report })
@@ -128,8 +123,7 @@ export async function POST(req) {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        
-        // Deliver a truncated summary on-chain to save gas
+
         const summary = `Audit Completed. Found ${report.includes('CRITICAL') ? 'CRITICAL' : 'standard'} findings. Check dApp for full report.`;
 
         await agentClient.writeContract({
@@ -138,22 +132,19 @@ export async function POST(req) {
           functionName: 'deliverResult',
           args: [userAddress, summary]
         });
-        await sendTelegramNotification(`✅ *Claude 3.5 Sonnet Audit Delivered On-Chain*`);
+        await sendTelegramNotification(`✅ *Claude 3.5 Audit Delivered On-Chain*`);
       } catch (err) {
         console.error("Background blockchain delivery failed:", err);
       }
     })();
 
-    // Return the Markdown report to the frontend
     return NextResponse.json({ report });
 
   } catch (error) {
     console.error("Audit API Error:", error);
-
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     }
-
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
