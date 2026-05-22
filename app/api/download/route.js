@@ -9,18 +9,23 @@ export async function GET(req) {
 
     if (!url) return new NextResponse("Missing URL", { status: 400 });
 
-    // 🚀 FIX: Spoof a real Chrome browser so Mixkit doesn't block Vercel
+    // 🚀 THE FIREWALL BYPASS
+    // We must trick Mixkit into thinking this request is coming from their own website
     const remoteRes = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': '*/*'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': 'https://mixkit.co/', // This tells Mixkit the request originated from their site
+        'Origin': 'https://mixkit.co'
       }
     });
 
     if (!remoteRes.ok) {
-        throw new Error(`Media provider blocked the request: ${remoteRes.status}`);
+        console.error(`Media firewall blocked request: ${remoteRes.status} ${remoteRes.statusText}`);
+        return new NextResponse(`Media provider blocked the request: ${remoteRes.status}`, { status: 403 });
     }
 
+    // Strip their restrictive headers so MiniPay accepts the stream
     const headers = new Headers(remoteRes.headers);
     headers.delete('x-frame-options');
     headers.delete('content-security-policy');
@@ -39,6 +44,7 @@ export async function GET(req) {
       headers.set('Content-Disposition', 'inline');
     }
 
+    // Stream the raw byte data back to the frontend
     return new NextResponse(remoteRes.body, {
       status: 200,
       headers
@@ -50,6 +56,9 @@ export async function GET(req) {
   }
 }
 
+// ---------------------------------------------------------
+// POST METHOD (For handling Base64 text downloads)
+// ---------------------------------------------------------
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -66,18 +75,10 @@ export async function POST(req) {
     if (fileType === 'VIDEO') { ext = 'mp4'; mime = 'video/mp4'; }
 
     if (fileData.startsWith('data:')) {
-      // Handle standard AI Base64 generations
       const base64Data = fileData.split(',')[1];
       buffer = Buffer.from(base64Data, 'base64');
-    } else if (fileData.startsWith('http')) {
-      // 🚀 FIX: If the Library accidentally POSTs a URL, catch it and fetch it anyway
-      const response = await fetch(fileData, {
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
-      const arrayBuffer = await response.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
     } else {
-       return new NextResponse("Invalid format", { status: 400 });
+       return new NextResponse("Invalid format. Expected Base64.", { status: 400 });
     }
 
     const headers = new Headers();
