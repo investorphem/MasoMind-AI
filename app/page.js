@@ -42,7 +42,7 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 ENTERPRISE VECTORS (Featuring Real Human Vocalist Singing Hooks & Open Partial Chunk Support)
+// 🚀 FIXED: All music tracks migrated to Google Storage Media Clusters with real human singing vocals & unblocked CORS
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
@@ -60,7 +60,7 @@ const SAMPLE_MUSIC = [
   },
   {
     id: 'm3',
-    title: 'Tell Me What You Want',
+    title: 'Tell Me Your Intent',
     genre: 'Pop / Human Singing',
     prompt: 'An immersive upbeat pop studio arrangement featuring layered real human vocals and rich melodic choruses built for premium dApp execution.',
     url: 'https://storage.googleapis.com/automotive-media/Tell_Me_That_You_Love_Me.mp3'
@@ -194,7 +194,7 @@ export default function MasoMindApp() {
     setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
   }, [mode]);
 
-  // 🚀 FIXED: Robust auto-typing engine loop configuration that scrolls sentences across all headers
+  // Typing logic ticker that moves continuously through placeholder arrays
   useEffect(() => {
     if (pendingState || prompt.length > 0 || (mode === 'MUSIC' && showLyricsInput)) {
       setPlaceholderText('');
@@ -437,7 +437,7 @@ export default function MasoMindApp() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-9 h-9 bg-emerald-500/10 rounded-lg border border-emerald-500/20 overflow-hidden text-emerald-400 p-1.5">
-               {/* 🚀 FIXED: Gradient definitions restored from hash pointers instead of text strings */}
+               {/* 🚀 LOGO SVG RESTORED: Gradient selectors perfectly mapped back to (#masoGradient) identifiers */}
                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" className="w-full h-full">
                 <defs>
                   <linearGradient id="masoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -561,7 +561,7 @@ export default function MasoMindApp() {
             {mode === 'VIDEO' && (
               <div className="relative p-1 rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl w-full aspect-video overflow-hidden">
                 <video key={resultData} controls autoPlay preload="auto" playsInline webkit-playsinline="true" className="w-full h-full object-cover rounded-[22px] relative z-10" src={resultData} />
-                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
+                <button onClick={downloadAsset} className="absolute bottom-4 right-4 z-20 glass-panel bg-black/50 hover:bg-emerald-500/80 border border-white/10 p-3 rounded-full"><Download className="w-5 h-5 text-white" /></button>
                 <button onClick={() => setResultData(null)} className="absolute top-4 left-4 z-20 flex items-center gap-1 px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-[10px] font-bold text-zinc-300"><ArrowLeft className="w-3 h-3" /> Eject</button>
               </div>
             )}
@@ -674,7 +674,6 @@ export default function MasoMindApp() {
                       <span className="text-[10px] font-mono text-zinc-500 block truncate">{sample.genre}</span>
                     </div>
                     <div className="flex gap-1.5">
-                      {/* 🚀 FIXED: Play button strictly triggers streaming without overriding inputs */}
                       <button 
                         onClick={() => {
                           setResultData(sample.url);
@@ -684,7 +683,6 @@ export default function MasoMindApp() {
                       >
                         Play
                       </button>
-                      {/* 🚀 Use button populates text forms strictly upon click request */}
                       <button 
                         onClick={() => {
                           if (mode === 'MUSIC') {
