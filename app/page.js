@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { createPublicClient, custom, http, parseUnits, formatUnits } from 'viem'; 
 import { celo } from 'viem/chains';
-import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Fingerprint, Download, Code, ChevronDown, Music, Video, RefreshCw, XCircle, Share2, Copy, CheckCircle, Library, List, AlertCircle, Sparkles } from 'lucide-react';
 import { useMiniPay } from '../hooks/useMiniPay';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -28,12 +28,6 @@ const PLACEHOLDERS = {
     "Paste Solidity code for gas optimization analysis...",
     "Input multi-sig wallet code for a security review..."
   ],
-  MUSIC: [
-    "An upbeat synthwave track for a racing game...",
-    "A lo-fi chill hop beat with soft piano...",
-    "Cinematic orchestral music for a boss battle...",
-    "A fast-paced electronic dance track..."
-  ],
   VIDEO: [
     "A cinematic drone shot over a glowing forest...",
     "A 3D animation of a futuristic city building...",
@@ -42,7 +36,7 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 FIXED: All music tracks migrated to Mozilla's bulletproof open-CORS edge network with human vocals
+// 🚀 BULLETPROOF TEST SHOWCASES (Supports instant cross-origin byte streaming)
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
@@ -67,28 +61,27 @@ const SAMPLE_MUSIC = [
   }
 ];
 
-// 🚀 FIXED: v1 and v2 returned to original working links; v3 migrated to unblocked Mozilla cluster
 const SAMPLE_VIDEOS = [
   {
     id: 'v1',
     title: 'Hyperdrive Matrix',
     genre: 'Sci-Fi / Cyberpunk',
     prompt: 'A first-person cinematic view driving a sports car through a neon-lit futuristic city tunnel at extreme speeds, raytracing fx.',
-    url: 'https://www.w3schools.com/html/mov_bbb.mp4'
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
   },
   {
     id: 'v2',
     title: 'Cosmic Threshold',
     genre: 'Cinematic Animation',
     prompt: 'A breathtaking 3D slow-motion animation pan over a glowing technicolor alien forest with bioluminescent plants under a starry night sky.',
-    url: 'https://www.w3schools.com/html/movie.mp4'
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
   },
   {
     id: 'v3',
     title: 'Neon Tokyo Grid',
     genre: 'Human Cinematic',
     prompt: 'A crisp high-frequency tech transition clip featuring real human characters and cinematic sci-fi settings on an open edge network.',
-    url: 'https://mdn.github.io/learning-area/html/multimedia-and-embedding/video-and-audio-content/rabbit320.mp4'
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
   }
 ];
 
@@ -108,6 +101,11 @@ export default function MasoMindApp() {
   const [status, setStatus] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // 🚀 DYNAMIC LYRICS PRODUCTION STATES
+  const [musicTitle, setMusicTitle] = useState('');
+  const [musicGenre, setMusicGenre] = useState('');
+  const [musicLyrics, setMusicLyrics] = useState('');
+
   const [pendingState, setPendingState] = useState(null);
 
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
@@ -116,12 +114,33 @@ export default function MasoMindApp() {
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
+  // Carousel Tracking References
+  const carouselRef = useRef(null);
+
   const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 
   const showToast = (message, type = 'success') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
   };
+
+  // 🚀 AUTOMATED SCROLLING ENGINE FOR HORIZONTAL CAROUSELS
+  useEffect(() => {
+    if (isPending || status !== '') return;
+    const scrollTrack = carouselRef.current;
+    if (!scrollTrack) return;
+
+    const autoScrollInterval = setInterval(() => {
+      const maxScrollPosition = scrollTrack.scrollWidth - scrollTrack.clientWidth;
+      if (scrollTrack.scrollLeft >= maxScrollPosition - 10) {
+        scrollTrack.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        scrollTrack.scrollBy({ left: 300, behavior: 'smooth' });
+      }
+    }, 3500);
+
+    return () => clearInterval(autoScrollInterval);
+  }, [mode, isPending, status]);
 
   useEffect(() => {
     if (!address) return;
@@ -164,12 +183,16 @@ export default function MasoMindApp() {
     setCurrentPlaceholderIndex(0);
     setPlaceholderText('');
     setIsDeleting(false);
+    if (mode !== 'MUSIC') {
+      setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
+    }
   }, [mode]);
 
   useEffect(() => {
-    if (pendingState || prompt.length > 0) return;
+    if (pendingState || prompt.length > 0 || mode === 'MUSIC') return;
 
     const currentExamples = PLACEHOLDERS[mode];
+    if (!currentExamples) return;
     const fullText = currentExamples[currentPlaceholderIndex];
     let typingSpeed = isDeleting ? 30 : 60;
 
@@ -234,19 +257,6 @@ export default function MasoMindApp() {
         showToast("Download started...", "success");
         return;
       }
-
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = '/api/download';
-      const dataInput = document.createElement('input');
-      dataInput.type = 'hidden'; dataInput.name = 'fileData'; dataInput.value = resultData;
-      form.appendChild(dataInput);
-      const typeInput = document.createElement('input');
-      typeInput.type = 'hidden'; typeInput.name = 'fileType'; typeInput.value = mode;
-      form.appendChild(typeInput);
-      document.body.appendChild(form);
-      form.submit(); 
-      document.body.removeChild(form);
     } catch (err) {
       console.error(err);
       showToast("Failed to initiate download.", "error");
@@ -299,7 +309,17 @@ export default function MasoMindApp() {
   };
 
   const executeService = async () => {
-    if (!prompt || !address) return;
+    // 🚀 DYNAMIC COMPOSITE PROMPT FOR LYRICS ENGINE
+    let finalPromptToSubmit = prompt;
+    if (mode === 'MUSIC') {
+      if (!musicTitle || !musicGenre || !musicLyrics) {
+        showToast("Please fill all Studio configuration inputs.", "error");
+        return;
+      }
+      finalPromptToSubmit = `MUSIC REQUEST - Title: "${musicTitle}" | Genre/Style: "${musicGenre}" | Custom Input Lyrics: [${musicLyrics}]`;
+    }
+
+    if (!finalPromptToSubmit || !address) return;
     setResultData(null);
 
     if (pendingState) {
@@ -356,18 +376,18 @@ export default function MasoMindApp() {
           ]
         }],
         functionName: 'requestService',
-        args: [token.address, amountToCharge, prompt, mode],
+        args: [token.address, amountToCharge, finalPromptToSubmit, mode],
       });
 
       setStatus('Confirming transaction on chain...');
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
       localStorage.setItem('pendingTxHash', txHash);
-      localStorage.setItem('pendingPrompt', prompt);
+      localStorage.setItem('pendingPrompt', finalPromptToSubmit);
       localStorage.setItem('pendingMode', mode);
-      setPendingState({ hash: txHash, prompt, mode });
+      setPendingState({ hash: txHash, prompt: finalPromptToSubmit, mode });
 
-      await invokeAPI(prompt, txHash, mode);
+      await invokeAPI(finalPromptToSubmit, txHash, mode);
 
     } catch (err) {
       console.error(err);
@@ -430,20 +450,13 @@ export default function MasoMindApp() {
                   <linearGradient id="boltGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#ffffff" /><stop offset="100%" stopColor="#34d399" />
                   </linearGradient>
-                  <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="8" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
                 </defs>
-                <g transform="translate(0, 10)" filter="url(#glow)">
-                  <path d="M236,140 C170,140 130,185 130,250 C130,300 160,335 190,355 C205,365 215,385 220,400 L236,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" opacity="0.85"/>
-                  <path d="M165,210 Q195,230 225,210" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" opacity="0.6"/>
-                  <path d="M145,270 Q180,280 210,260" fill="none" stroke="#14b8a6" strokeWidth="4" strokeLinecap="round" opacity="0.6"/>
-                  <path d="M175,325 Q200,310 220,330" fill="none" stroke="#34d399" strokeWidth="4" strokeLinecap="round" opacity="0.4"/>
-                  <path d="M276,140 C342,140 382,185 382,250 C382,300 352,335 322,355 C307,365 297,385 292,400 L276,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                <g transform="translate(0, 10)">
+                  <path d="M236,140 C170,140 130,185 130,250 C130,300 160,335 190,355 C205,365 215,385 220,400 L236,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" />
+                  <path d="M276,140 C342,140 382,185 382,250 C382,300 352,335 322,355 C307,365 297,385 292,400 L276,400 Z" fill="none" stroke="url(#masoGradient)" strokeWidth="8" strokeLinecap="round" />
                   <polygon points="270,110 190,260 250,260 220,410 320,230 255,230" fill="url(#boltGradient)" />
-                  <circle cx="130" cy="250" r="7" fill="#34d399" /><circle cx="382" cy="250" r="7" fill="#34d399" />
                 </g>
-              </svg>
+               </svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -514,9 +527,7 @@ export default function MasoMindApp() {
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/80">
                   <div className="flex items-center gap-2">
                     <Code className="w-5 h-5 text-emerald-400" />
-                    <div>
-                      <h3 className="text-xs font-bold text-zinc-100 tracking-wider">SECURITY REPORT</h3>
-                    </div>
+                    <div><h3 className="text-xs font-bold text-zinc-100 tracking-wider">SECURITY REPORT</h3></div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={copyToClipboard} className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-xs font-medium text-zinc-300">{copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />} {copied ? 'Copied!' : 'Copy'}</button>
@@ -543,7 +554,7 @@ export default function MasoMindApp() {
             )}
           </>
         ) : (
-          <div className="w-full aspect-square rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden">
+          <div className="w-full min-h-[360px] rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center p-6 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
             {isPending || status ? (
               <div className="space-y-4 flex flex-col items-center relative z-10">
@@ -557,71 +568,118 @@ export default function MasoMindApp() {
                   <p className="text-xs text-zinc-400 text-center mb-6 px-4">The payment processed, but AI failed to complete. Retry below without paying again, or request a refund.</p>
                   <button onClick={handleRefundFromHome} className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> Request Refund</button>
                </div>
+            ) : mode === 'MUSIC' ? (
+              /* 🚀 UPGRADED: Dynamic Lyrics Studio Console instead of basic blank box */
+              <div className="relative z-10 flex flex-col w-full text-left space-y-4 p-2 animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-bold tracking-widest text-zinc-300 font-mono uppercase">Vocal Generation Console</h3>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 font-bold">Track Title</label>
+                    <input type="text" placeholder="e.g., Block Anthem" value={musicTitle} onChange={(e) => setMusicTitle(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50" />
+                  </div>
+                  <div className="flex flex-col space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 font-bold">Vocal Style / Genre</label>
+                    <input type="text" placeholder="e.g., Soulful R&B Singer" value={musicGenre} onChange={(e) => setMusicGenre(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 font-bold">Custom Request Lyrics</label>
+                  <textarea rows={3} placeholder="Paste or compose the exact human vocal lyrics here..." value={musicLyrics} onChange={(e) => setMusicLyrics(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50 resize-none" />
+                </div>
+                
+                <div className="flex justify-between items-center pt-2">
+                  <span className="px-3 py-1 bg-zinc-950 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: 0.50 {activeToken}</span>
+                  <button onClick={executeService} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]">Compile Track</button>
+                </div>
+              </div>
             ) : (
+              /* Standard Box display layout for Audit, Images & Videos */
               <div className="relative z-10 flex flex-col items-center">
                 <div className="p-5 bg-zinc-900 rounded-2xl border border-zinc-800 mb-4">
                   {mode === 'IMAGE' && <ImageIcon className="w-10 h-10 text-zinc-600" />}
                   {mode === 'AUDIT' && <Code className="w-10 h-10 text-zinc-600" />}
-                  {mode === 'MUSIC' && <Music className="w-10 h-10 text-zinc-600" />}
                   {mode === 'VIDEO' && <Video className="w-10 h-10 text-zinc-600" />}
                 </div>
                 <h3 className="text-zinc-300 font-medium mb-1">
                   {mode === 'IMAGE' && 'Generate Asset'}
                   {mode === 'AUDIT' && 'Smart Contract Audit'}
-                  {mode === 'MUSIC' && 'AI Music Studio'}
                   {mode === 'VIDEO' && 'AI Video Engine'}
                 </h3>
                 <p className="text-xs text-zinc-600 max-w-[240px]">
                   {mode === 'IMAGE' && 'Enter an intent below to generate high-fidelity assets.'}
                   {mode === 'AUDIT' && 'Upload Solidity code for an AI security and gas audit.'}
-                  {mode === 'MUSIC' && 'Describe the genre, tempo, and mood for a GameFi audio track.'}
                   {mode === 'VIDEO' && 'Describe a scene or provide a script for video generation.'}
                 </p>
-                <span className="mt-4 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: {mode === 'IMAGE' ? '0.10' : mode === 'MUSIC' ? '0.50' : mode === 'VIDEO' ? '1.00' : '0.05'} {activeToken}</span>
+                <span className="mt-4 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: {mode === 'IMAGE' ? '0.10' : mode === 'VIDEO' ? '1.00' : '0.05'} {activeToken}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* 🚀 DYNAMIC SAMPLE STUDIO INTERFACE (Renders below card options for Music & Video logs) */}
+        {/* 🚀 UPGRADED CAROUSEL SLIDER ENGINE (Auto-scrolls one-by-one + Supports swipe actions) */}
         {!isPending && !status && (mode === 'MUSIC' || mode === 'VIDEO') && (
-          <div className="w-full space-y-3 pt-2 animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="w-full space-y-3 pt-2">
             <div className="flex items-center gap-2 px-1">
               <Library className="w-4 h-4 text-emerald-400" />
               <h4 className="text-xs font-bold tracking-wider text-zinc-500 uppercase font-mono">Explore Community Showcases</h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
+            {/* Scrolling Track Container viewport element */}
+            <div 
+              ref={carouselRef}
+              className="w-full flex flex-row overflow-x-auto gap-3 snap-x snap-mandatory scroll-smooth scrollbar-none pb-2"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {(mode === 'MUSIC' ? SAMPLE_MUSIC : SAMPLE_VIDEOS).map((sample) => (
-                <div key={sample.id} className="p-4 bg-zinc-900/30 border border-zinc-800/80 rounded-2xl flex flex-col space-y-3 hover:border-emerald-500/20 transition-all group">
+                <div 
+                  key={sample.id} 
+                  className="w-[290px] flex-shrink-0 p-4 bg-zinc-900/30 border border-zinc-800/80 rounded-2xl flex flex-col space-y-3 snap-center hover:border-emerald-500/20 transition-all group"
+                >
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h5 className="text-xs font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors">{sample.title}</h5>
-                      <span className="text-[10px] font-mono text-zinc-500">{sample.genre}</span>
+                    <div className="max-w-[150px] truncate">
+                      <h5 className="text-xs font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors truncate">{sample.title}</h5>
+                      <span className="text-[10px] font-mono text-zinc-500 block truncate">{sample.genre}</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       <button 
                         onClick={() => {
                           setResultData(sample.url);
-                          setPrompt(sample.prompt);
+                          if (mode === 'MUSIC') {
+                            setMusicTitle(sample.title);
+                            setMusicGenre(sample.genre);
+                            setMusicLyrics(sample.prompt);
+                          } else {
+                            setPrompt(sample.prompt);
+                          }
                           showToast(`Loaded ${sample.title}!`, "success");
                         }} 
-                        className="px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-bold hover:bg-emerald-500/20 transition-colors"
+                        className="px-2 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-bold hover:bg-emerald-500/20 transition-colors"
                       >
-                        Load Sample
+                        Play
                       </button>
                       <button 
                         onClick={() => {
-                          setPrompt(sample.prompt);
-                          showToast("Prompt copied to execution bar!", "success");
+                          if (mode === 'MUSIC') {
+                            setMusicTitle(sample.title);
+                            setMusicGenre(sample.genre);
+                            setMusicLyrics(sample.prompt);
+                          } else {
+                            setPrompt(sample.prompt);
+                          }
+                          showToast("Prompt copied to dashboard console!", "success");
                         }} 
-                        className="px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-[10px] font-bold hover:bg-zinc-700 transition-colors"
+                        className="px-2 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-[9px] font-bold hover:bg-zinc-700 transition-colors"
                       >
-                        Use Prompt
+                        Use
                       </button>
                     </div>
                   </div>
-                  <div className="p-3 bg-zinc-950/40 border border-zinc-900 rounded-xl text-[11px] text-zinc-400 italic leading-relaxed">
+                  <div className="p-2.5 bg-zinc-950/40 border border-zinc-900 rounded-xl text-[10px] text-zinc-400 italic h-[58px] overflow-y-auto custom-scrollbar leading-relaxed">
                     <span className="text-emerald-500/60 font-mono font-bold non-italic">Agent Prompt: </span>"{sample.prompt}"
                   </div>
                 </div>
@@ -631,22 +689,25 @@ export default function MasoMindApp() {
         )}
       </main>
 
+      {/* Footer view context handles logic validation inputs for regular views */}
       <footer className="w-full max-w-md mx-auto mt-8 mb-4">
-        <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1">
-          {mode === 'AUDIT' ? (
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))} rows={2} disabled={!!pendingState} className="w-full pl-4 pr-32 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none disabled:opacity-50" />
-          ) : (
-            <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={!!pendingState} placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))} className="w-full pl-4 pr-32 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 disabled:opacity-50" />
-          )}
-          {pendingState && (
-            <button onClick={clearPendingState} className="absolute right-28 p-2 text-zinc-500 hover:text-red-400"><XCircle className="w-5 h-5" /></button>
-          )}
-          <button onClick={executeService} disabled={!prompt || isPending || status !== ''} className={`absolute right-2 top-2 bottom-2 px-5 font-bold text-xs rounded-xl transition-all disabled:opacity-30 flex items-center justify-center ${pendingState ? 'bg-amber-500 hover:bg-amber-400 text-zinc-900 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
-            {pendingState ? 'Retry API' : 'Execute'}
-          </button>
-        </div>
+        {mode !== 'MUSIC' && (
+          <div className="relative flex items-center glass-panel rounded-2xl shadow-2xl p-1 mb-6">
+            {mode === 'AUDIT' ? (
+              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))} rows={2} disabled={!!pendingState} className="w-full pl-4 pr-32 py-3 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 resize-none disabled:opacity-50" />
+            ) : (
+              <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={!!pendingState} placeholder={prompt ? "" : (placeholderText + (isDeleting ? "" : "|"))} className="w-full pl-4 pr-32 py-4 bg-transparent focus:outline-none text-sm text-zinc-200 placeholder:text-zinc-600 disabled:opacity-50" />
+            )}
+            {pendingState && (
+              <button onClick={clearPendingState} className="absolute right-28 p-2 text-zinc-500 hover:text-red-400"><XCircle className="w-5 h-5" /></button>
+            )}
+            <button onClick={executeService} disabled={!prompt || isPending || status !== ''} className={`absolute right-2 top-2 bottom-2 px-5 font-bold text-xs rounded-xl transition-all disabled:opacity-30 flex items-center justify-center ${pendingState ? 'bg-amber-500 hover:bg-amber-400 text-zinc-900 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}>
+              {pendingState ? 'Retry API' : 'Execute'}
+            </button>
+          </div>
+        )}
 
-        <div className="mt-8 mb-2 flex flex-col items-center justify-center space-y-3">
+        <div className="mt-4 mb-2 flex flex-col items-center justify-center space-y-3">
           <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-medium flex-wrap justify-center">
             <Link href="/info" className="hover:text-emerald-400">FAQ</Link><span className="w-1 h-1 rounded-full bg-zinc-800"></span>
             <Link href="/info/docs" className="hover:text-emerald-400">Docs</Link><span className="w-1 h-1 rounded-full bg-zinc-800"></span>
