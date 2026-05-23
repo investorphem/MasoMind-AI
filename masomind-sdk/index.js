@@ -24,7 +24,7 @@ export class MasoMind {
   }
 
   async _processPayment(account, tokenSymbol, priceStr, rompt, serviceType) {
-    const token = TOKENS[tokenSymbol.toUpperCase()];
+    const token = TOKES[tokenSymbol.toUpperCase()];
     if (!token) throw new Error("Usupported token. Use cUSD, USDC, or USDT.");
 
     const amountToCharge = parseUnits(priceStr, token.decimals);
