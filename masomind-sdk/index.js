@@ -7,7 +7,7 @@ const BASE_URL = 'https://masomind-sage.vercel.app'; // Your deployed Vercel app
 const TOKENS = {
   cUSD: { address: '0x765de816845861e75a25fca122bb6898b8b1282a', decimals: 18 },
   USDC: { address: '0xceba9300f2b948710d2653dd7b07f33a8b32118c', decimals: 6 },
-  USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a88248a566', decimals: 6 }
+  USDT: { address: '0x48065fbbe25f71c282ddf5e1cd6d6a88248a566', decimals: 6 }
 };
 
 const ABI = [
