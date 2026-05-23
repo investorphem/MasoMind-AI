@@ -42,7 +42,7 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 FIXED: All music tracks migrated to Google Storage Media Clusters with real human singing vocals & unblocked CORS
+// 🚀 ENTERPRISE VECTORS (Featuring Real Human Vocalist Singing Hooks & Open Partial Chunk Support)
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
@@ -100,7 +100,7 @@ export default function MasoMindApp() {
 
   const [mode, setMode] = useState('MUSIC');
   const [activeToken, setActiveToken] = useState('USDT'); 
-  const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
+  const [balances, setBalances] = useState({ USDm: '0.00', USDC: '0.00', USDT: '0.00' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); 
 
   const [prompt, setPrompt] = useState('');
@@ -437,7 +437,6 @@ export default function MasoMindApp() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-9 h-9 bg-emerald-500/10 rounded-lg border border-emerald-500/20 overflow-hidden text-emerald-400 p-1.5">
-               {/* 🚀 LOGO SVG RESTORED: Gradient selectors perfectly mapped back to (#masoGradient) identifiers */}
                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" className="w-full h-full">
                 <defs>
                   <linearGradient id="masoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -513,14 +512,12 @@ export default function MasoMindApp() {
           )}
         </div>
 
-        {!pendingState && (
-  <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
-    <button onClick={() => { setMode('MUSIC'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
-    <button onClick={() => { setMode('VIDEO'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
-    <button onClick={() => { setMode('IMAGE'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
-    <button onClick={() => { setMode('AUDIT'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
-  </div>
-)}
+        <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
+          <button onClick={() => { setMode('MUSIC'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
+          <button onClick={() => { setMode('VIDEO'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
+          <button onClick={() => { setMode('IMAGE'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
+          <button onClick={() => { setMode('AUDIT'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto space-y-5">
