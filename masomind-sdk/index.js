@@ -23,7 +23,7 @@ export class MasoMind {
     this.walletClient = createWalletClient({ chain: celo, transport: custom(provider) })
   }
 
-  async _processPayment(account, tokenSymbol, priceStr, prompt, serviceType) {
+  async _processPayment(account, tokenSymbol, priceStr, rompt, serviceType) {
     const token = TOKENS[tokenSymbol.toUpperCase()];
     if (!token) throw new Error("Unsupported token. Use cUSD, USDC, or USDT.");
 
