@@ -173,7 +173,7 @@ export default function MasoMindApp() {
     fetchBalances();
   }, [address]);
 
-  // 🚀 CRASH-GUARD RECOVERY: Safely handles mounts and purges data corruption parameters
+  // CRASH-GUARD RECOVERY: Safely handles mounts and purges data corruption parameters
   useEffect(() => {
     try {
       const hash = localStorage.getItem('pendingTxHash');
@@ -217,7 +217,7 @@ export default function MasoMindApp() {
     if (!currentExamples || currentExamples.length === 0) return;
 
     let timer;
-    const fullText = currentExamples[currentPlaceholderIndex] || '';
+    const fullText = currentExamples[currentPlaceholderIndex];
 
     if (!isDeleting) {
       if (placeholderText !== fullText) {
@@ -373,7 +373,6 @@ export default function MasoMindApp() {
       }
 
       setStatus(`Checking ${activeToken} permissions...`);
-      // 🚀 FIXED: Fixed token parameters mapping syntax identifiers
       const allowance = await publicClient.readContract({
         address: token.address,
         abi: [{"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]}],
@@ -574,7 +573,10 @@ export default function MasoMindApp() {
                     <button onClick={downloadAsset} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs font-medium text-emerald-400"><Download className="w-3.5 h-3.5" /> MD</button>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-5 custom-scrollbar text-sm leading-relaxed"><ReactMarkdown>{resultData}</ReactMarkdown></div>
+                {/* 🚀 VISIBILITY FIX: Added prose and explicit theme configurations to prevent invisible elements */}
+                <div className="flex-1 overflow-y-auto p-5 custom-scrollbar text-sm leading-relaxed text-zinc-200 prose prose-invert max-w-none prose-headings:text-emerald-400 prose-p:text-zinc-300 prose-table:text-zinc-300 prose-strong:text-white">
+                  <ReactMarkdown>{resultData}</ReactMarkdown>
+                </div>
               </div>
             )}
 
@@ -622,7 +624,7 @@ export default function MasoMindApp() {
                   </div>
                   <button onClick={() => setShowLyricsInput(false)} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 tracking-wider font-mono">| Standard Mode</button>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col space-y-1.5">
                     <label className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 font-bold">Track Title</label>
@@ -638,7 +640,7 @@ export default function MasoMindApp() {
                   <label className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 font-bold">Custom Request Lyrics</label>
                   <textarea rows={3} placeholder="Paste or compose the exact human vocal lyrics here..." value={musicLyrics} onChange={(e) => setMusicLyrics(e.target.value)} className="w-full bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/50 resize-none" />
                 </div>
-                
+
                 <div className="flex justify-between items-center pt-1">
                   <span className="px-3 py-1 bg-zinc-950 border border-zinc-800 rounded-full text-[10px] font-mono text-emerald-500/70">Cost: 0.50 {activeToken}</span>
                   <button onClick={executeService} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition-all">Compile Track</button>
