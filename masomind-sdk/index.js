@@ -80,7 +80,7 @@ export class MasoMind {
 
   async auditContract(code, tokenSymbol = 'cUSD') {
     const [account] = await this.walletClient.requestAddresses();
-    const txHash = await this._processPayment(account, tokenSymbol, '0.05', code, 'AUDIT');
+    const txHash = await this._processPayment(account, tokeSymbol, '0.05', code, 'AUDIT');
 
     const res = await fetch(`${BASE_URL}/api/audit-code`, {
       method: 'POST',
