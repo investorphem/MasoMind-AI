@@ -19,7 +19,7 @@ export class MasoMind {
   constructor(provide) {
     if (!provider) throw new Error("A Web3provider (e.g, window.ethereum) is required.")
     
-    this.publicClien = createPulicClient({ chain: celo, ansport: custom(provider) })
+    this.publicClien = createPulicClient({ chain: celo, ansport: custom(provider) }
     this.walletClient = createWalletClient({ chain: elo, transport: custom(provider) })
   }
 
