@@ -102,19 +102,13 @@ export async function POST(req) {
       }]);
     }
 
-    // 4. Gemini 2.5 Flash Core Configuration
+    // 4. Gemini 2.5 Flash Core Request Generation
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
-    // 🚀 ENTERPRISE CONSTRAINT UPDATE: Restricts wide padding blocks and spatial text layout errors
-    const systemPrompt = `You are an elite enterprise-level Web3 Smart Contract Security Engineer and Core Auditor representing Masonode Technologies Limited.
-    Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies.
-    
-    CRITICAL FORMATTING INSTRUCTIONS:
-    1. Do NOT under any circumstances add manual horizontal spacing inside Markdown table cells or lines to visually split text columns. Keep the syntax tight (e.g., "| ID | Severity | Description |" with single space wrappers).
-    2. Never output long sequences of consecutive blank lines or trailing spatial chunks.
-    3. Structure the audit report with tight headings (## and ###) and bulleted lists.
-    4. All fixes must be contained inside specific code blocks with clean language syntax labels (e.g., \`\`\`solidity).`;
+    const systemPrompt = `You are an elite Web3 Smart Contract Security Engineer and Gas Optimization Auditor. 
+    Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies. 
+    Your entire output response format must be written in professional, clean Markdown using definitive headings, tables, code blocks for fixes, and concise explanations.`;
 
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -124,7 +118,7 @@ export async function POST(req) {
           parts: [{ text: `Perform a meticulous security audit on this deployment source payload:\n\n${finalSolidityCode}` }]
         }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.1 } // Dropping temp to 0.1 handles absolute alignment deterministic accuracy
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.1 }
       })
     });
 
@@ -139,25 +133,39 @@ export async function POST(req) {
     }
     const report = aiData.candidates[0].content.parts[0].text;
 
-    // 5. Database Status Sync & On-Chain Delivery Trigger
+    // 5. Sync Database Status Logs
     await supabase.from('transactions').update({ status: 'COMPLETED', result_data: report }).eq('tx_hash', txHash);
 
-    (async () => {
+    // 🚀 FIXED: Sequential, fully awaited execution to prevent Vercel from killing the broadcast mid-flight
+    if (AGENT_PRIVATE_KEY) {
       try {
-        const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
+        // Formulate valid hex string prefix parameters
+        const formattedKey = AGENT_PRIVATE_KEY.startsWith('0x') ? AGENT_PRIVATE_KEY : `0x${AGENT_PRIVATE_KEY}`;
+        const account = privateKeyToAccount(formattedKey);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
+        
         const summary = `Audit Complete. Status: ${report.includes('CRITICAL') || report.includes('HIGH') ? '⚠️ Vulnerabilities Flagged' : '✅ Operational Standards Confirmed'}. View full markdown report.`;
 
-        await agentClient.writeContract({
+        // Force explicit await constraint on transaction broadcast submission
+        const deliveryTxHash = await agentClient.writeContract({
+          account,
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
           args: [userAddress, summary.substring(0, 240)]
         });
-        await sendTelegramNotification(`✅ *Gemini 2.5 Smart Resolution Audit Delivered On-Chain*`);
-      } catch (err) { console.error("Blockchain delivery failed:", err); }
-    })();
 
+        console.log(`On-chain result delivery successful. Tx: ${deliveryTxHash}`);
+        await sendTelegramNotification(`✅ *Gemini 2.5 Smart Resolution Audit Delivered On-Chain: ${deliveryTxHash}*`);
+      } catch (blockchainError) {
+        // Log block exceptions without breaking user response streaming
+        console.error("On-chain delivery transaction broadcast failed:", blockchainError);
+      }
+    } else {
+      console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
+    }
+
+    // 6. Return Final Clean Payload String
     return NextResponse.json({ report });
 
   } catch (error) {
