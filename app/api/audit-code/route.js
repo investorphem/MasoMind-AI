@@ -5,7 +5,7 @@ import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
 import { sendTelegramNotification } from '../../../lib/telegram';
 
-// 🚀 UPDATED: New Contract Address
+// 🚀 Core Contract Infrastructure Pointers
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
@@ -17,7 +17,7 @@ const celoTransports = fallback([
 ]);
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD
+  '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD / USDm
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,  // USDC
   '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6   // USDT
 };
@@ -54,25 +54,25 @@ export async function POST(req) {
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
-    // 1. Verify Transaction
+    // 1. Verify Transaction Validity
     const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
     if (receipt.status !== 'success' || receipt.to.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
-      return NextResponse.json({ error: "Invalid transaction" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid transaction signature" }, { status: 403 });
     }
 
     const transaction = await publicClient.getTransaction({ hash: txHash });
     const { args } = decodeFunctionData({ abi: REQUEST_ABI, data: transaction.input });
     const [paidToken, paidAmount, , paidServiceType] = args;
 
-    // 🛡️ Ensure they paid exactly 0.05 for the AUDIT service
+    // 🛡️ Ensure payment criteria matches precisely 0.05 for AUDIT service types
     const decimals = TOKENS[paidToken.toLowerCase()];
     if (!decimals || paidAmount < parseUnits('0.05', decimals) || paidServiceType !== 'AUDIT') {
-      return NextResponse.json({ error: "Invalid payment or routing" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid execution routing parameters" }, { status: 403 });
     }
 
     const userAddress = receipt.from;
 
-    // 2. Log to DB
+    // 2. State Sync Logging via Database Indexer
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
@@ -85,36 +85,47 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. 🚀 ENTERPRISE AI AUDIT
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicApiKey) throw new Error("ANTHROPIC_API_KEY is missing");
+    // 3. 🚀 FREE TIER GEMINI COMPLIANT CODE AUDITING MATRIX
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
-    const systemPrompt = `You are an elite Web3 Smart Contract Security Auditor. Analyze the provided Solidity/Web3 code for vulnerabilities. Format in professional Markdown.`;
+    const systemPrompt = `You are an elite Web3 Smart Contract Security Engineer and Gas Optimization Auditor. 
+    Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies. 
+    Your entire output response format must be written in professional, clean Markdown using definitive headings, tables, code blocks for fixes, and concise explanations.`;
 
-    const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: "user", content: prompt }]
+        contents: [{
+          parts: [{ text: `Perform a meticulous security audit on this deployment source payload:\n\n${prompt}` }]
+        }],
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        generationConfig: {
+          maxOutputTokens: 4096,
+          temperature: 0.2
+        }
       })
     });
 
     if (!aiResponse.ok) {
         const errorData = await aiResponse.json();
-        throw new Error(`Anthropic API Error: ${errorData.error?.message || aiResponse.statusText}`);
+        throw new Error(`Google AI Studio Engine Failure: ${errorData.error?.message || aiResponse.statusText}`);
     }
 
     const aiData = await aiResponse.json();
-    const report = aiData.content[0].text;
+    
+    // Safely parse the text block canditate matching Google's execution schema
+    if (!aiData.candidates || !aiData.candidates[0]?.content?.parts[0]?.text) {
+      throw new Error("Invalid structure returned from the Gemini modeling endpoint.");
+    }
+    const report = aiData.candidates[0].content.parts[0].text;
 
-    // 4. NON-BLOCKING DELIVERY
+    // 4. PERSISTENT TRANSACTION STATUS RESOLUTION AND DELIVERY CLOSURE
     await supabase.from('transactions')
       .update({ status: 'COMPLETED', result_data: report })
       .eq('tx_hash', txHash);
@@ -124,24 +135,25 @@ export async function POST(req) {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
 
-        const summary = `Audit Completed. Found ${report.includes('CRITICAL') ? 'CRITICAL' : 'standard'} findings. Check dApp for full report.`;
+        // Build summary telemetry payload string
+        const summary = `Audit Complete. Status: ${report.includes('CRITICAL') || report.includes('HIGH') ? '⚠️ Vulnerabilities Flagged' : '✅ Operational Standards Confirmed'}. View full markdown report.`;
 
         await agentClient.writeContract({
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summary]
+          args: [userAddress, summary.substring(0, 240)] // Enforces string optimization parameters
         });
-        await sendTelegramNotification(`✅ *Claude 3.5 Audit Delivered On-Chain*`);
+        await sendTelegramNotification(`✅ *Gemini Free Flash Audit Settled and Delivered On-Chain*`);
       } catch (err) {
-        console.error("Background blockchain delivery failed:", err);
+        console.error("Non-blocking background blockchain delivery failed:", err);
       }
     })();
 
     return NextResponse.json({ report });
 
   } catch (error) {
-    console.error("Audit API Error:", error);
+    console.error("Audit API Handler Critical Error:", error);
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     }
