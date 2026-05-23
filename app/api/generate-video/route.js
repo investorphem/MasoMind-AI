@@ -7,6 +7,7 @@ import { sendTelegramNotification } from '../../../lib/telegram';
 
 export const maxDuration = 60; 
 
+// 🚀 Core Contract Infrastructure Pointers
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
@@ -18,7 +19,7 @@ const celoTransports = fallback([
 ]);
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'cUSD' },
+  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'cUSD' }, // USDm
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
   '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }
 };
@@ -45,7 +46,7 @@ const DELIVERY_ABI = [{
   ]
 }];
 
-// 🎯 FIX: Swapped hotlink-protected Mixkit URLs for unblocked, range-supporting media layers
+// 🎯 HIGH-COMPATIBILITY DIGITAL CONTAINERS
 const CINEMATIC_VIDEOS = {
   cyberpunk: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
   nature: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
@@ -64,19 +65,20 @@ export async function POST(req) {
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
-    // 1. Verify Transaction
+    // 1. Verify Payment Transaction Validity
     const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
     if (receipt.status !== 'success' || receipt.to.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
-      return NextResponse.json({ error: "Invalid transaction" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid transaction signature" }, { status: 403 });
     }
 
     const transaction = await publicClient.getTransaction({ hash: txHash });
     const { args } = decodeFunctionData({ abi: REQUEST_ABI, data: transaction.input });
     const [paidToken, paidAmount, , paidServiceType] = args;
 
+    // 🛡️ Ensure payment criteria matches precisely 1.00 for VIDEO service types
     const tokenConfig = TOKENS[paidToken.toLowerCase()];
     if (!tokenConfig || paidAmount < parseUnits('1.00', tokenConfig.decimals) || paidServiceType !== 'VIDEO') {
-      return NextResponse.json({ error: "Invalid payment or routing" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid execution routing parameters" }, { status: 403 });
     }
 
     const userAddress = receipt.from;
@@ -85,7 +87,7 @@ export async function POST(req) {
 
     await sendTelegramNotification(`💰 *Payment Verified!*\nUser: \`${userAddress}\`\nPaid: ${humanAmount} ${tokenConfig.symbol}\nService: ${paidServiceType}\nStatus: ⏳ Processing AI...`);
 
-    // 2. Log to DB
+    // 2. State Sync Logging via Database Indexer
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
@@ -101,26 +103,40 @@ export async function POST(req) {
     else if (cleanPrompt.includes('forest') || cleanPrompt.includes('nature') || cleanPrompt.includes('mountain')) mediaUrl = CINEMATIC_VIDEOS.nature;
     else if (cleanPrompt.includes('car') || cleanPrompt.includes('drive') || cleanPrompt.includes('race')) mediaUrl = CINEMATIC_VIDEOS.car;
 
-    // 4. DELIVERY
+    // 4. Update Database Status Logs
     await supabase.from('transactions').update({ status: 'COMPLETED', result_data: mediaUrl }).eq('tx_hash', txHash);
 
-    (async () => {
+    // 5. 🚀 FIXED: Sequential, fully awaited execution to prevent serverless execution freeze
+    if (AGENT_PRIVATE_KEY) {
       try {
-        const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
+        const formattedKey = AGENT_PRIVATE_KEY.startsWith('0x') ? AGENT_PRIVATE_KEY : `0x${AGENT_PRIVATE_KEY}`;
+        const account = privateKeyToAccount(formattedKey);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        await agentClient.writeContract({
+        
+        const summaryMsg = `Video Ready: ${mediaUrl.substring(0, 30)}...`;
+
+        const deliveryTxHash = await agentClient.writeContract({
+          account,
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, `Video Ready: ${mediaUrl.substring(0, 30)}...`]
+          args: [userAddress, summaryMsg]
         });
-        await sendTelegramNotification(`✅ *AI Delivery Successful*\nUser: \`${userAddress}\`\nPrompt: "${prompt}"`);
-      } catch (err) { console.error("Delivery failed:", err); }
-    })();
 
+        console.log(`On-chain video asset delivery broadcast confirmed: ${deliveryTxHash}`);
+        await sendTelegramNotification(`✅ *AI Delivery Successful*\nUser: \`${userAddress}\`\nPrompt: "${prompt}"\nTx: ${deliveryTxHash}`);
+      } catch (blockchainError) { 
+        console.error("On-chain video delivery transaction broadcast failed:", blockchainError); 
+      }
+    } else {
+      console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
+    }
+
+    // 6. Secure Return Response Streaming
     return NextResponse.json({ mediaUrl });
+
   } catch (error) {
-    console.error("Video API Error:", error);
+    console.error("Video API Handler Critical Error:", error);
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
         if (paymentDetails) await sendTelegramNotification(`❌ *AI Engine Crash*\nUser: \`${paymentDetails.user}\`\nStatus: Payment secured, but AI failed. Error: ${error.message}`);
