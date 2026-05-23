@@ -16,7 +16,7 @@ const ABI = [
 ];
 
 export class MasoMind {
-  constructor(provider) {
+  constructor(provide) {
     if (!provider) throw new Error("A Web3provider (e.g, window.ethereum) is required.")
     
     this.publicClien = createPulicClient({ chain: celo, ansport: custom(provider) })
