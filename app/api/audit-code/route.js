@@ -63,13 +63,12 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. 🚀 NEW: Dynamic Address Resolution Interceptor
+    // 2. Dynamic Address Resolution Interceptor
     let finalSolidityCode = prompt;
     const cleanedInput = prompt.trim();
     const isAddress = /^0x[a-fA-F0-9]{40}$/.test(cleanedInput);
 
     if (isAddress) {
-      // Hit the official free-tier Celoscan API explorer module
       const celoscanApiKey = process.env.CELOSCAN_API_KEY || ''; 
       const celoscanUrl = `https://api.celoscan.io/api?module=contract&action=getsourcecode&address=${cleanedInput}${celoscanApiKey ? `&apikey=${celoscanApiKey}` : ''}`;
       
@@ -82,8 +81,6 @@ export async function POST(req) {
       
       if (scanData.status === "1" && scanData.result?.[0]?.SourceCode) {
         finalSolidityCode = scanData.result[0].SourceCode;
-        
-        // Handle rare standard multi-file JSON input wraps cleanly
         if (finalSolidityCode.startsWith('{{')) {
           finalSolidityCode = finalSolidityCode.substring(1, finalSolidityCode.length - 1);
         }
@@ -97,7 +94,7 @@ export async function POST(req) {
     if (!existingTx) {
       await supabase.from('transactions').insert([{
         tx_hash: txHash, 
-        prompt: prompt, // Keeps historical tracking as the original address/input string
+        prompt: prompt, 
         service_type: 'AUDIT', 
         status: 'PENDING', 
         user_address: userAddress.toLowerCase(),
@@ -105,7 +102,7 @@ export async function POST(req) {
       }]);
     }
 
-    // 4. Gemini Free Flash Audit Generation Core
+    // 4. 🚀 FIXED: Target model corrected to active gemini-2.5-flash infrastructure
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
@@ -113,7 +110,7 @@ export async function POST(req) {
     Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies. 
     Your entire output response format must be written in professional, clean Markdown using definitive headings, tables, code blocks for fixes, and concise explanations.`;
 
-    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -151,7 +148,7 @@ export async function POST(req) {
           functionName: 'deliverResult',
           args: [userAddress, summary.substring(0, 240)]
         });
-        await sendTelegramNotification(`✅ *Gemini Smart Resolution Audit Delivered On-Chain*`);
+        await sendTelegramNotification(`✅ *Gemini 2.5 Smart Resolution Audit Delivered On-Chain*`);
       } catch (err) { console.error("Blockchain delivery failed:", err); }
     })();
 
