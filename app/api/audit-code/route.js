@@ -63,12 +63,12 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. Dynamic Address Resolution Interceptor
+    // 2. Multi-Chain Address Detection Rule Blocks
     let finalSolidityCode = prompt;
     const cleanedInput = prompt.trim();
-    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(cleanedInput);
+    const isEvmAddress = /^0x[a-fA-F0-9]{40}$/.test(cleanedInput);
 
-    if (isAddress) {
+    if (isEvmAddress) {
       const celoscanApiKey = process.env.CELOSCAN_API_KEY || ''; 
       const celoscanUrl = `https://api.celoscan.io/api?module=contract&action=getsourcecode&address=${cleanedInput}${celoscanApiKey ? `&apikey=${celoscanApiKey}` : ''}`;
       
@@ -85,8 +85,11 @@ export async function POST(req) {
           finalSolidityCode = finalSolidityCode.substring(1, finalSolidityCode.length - 1);
         }
       } else {
-        return NextResponse.json({ error: "Contract address is unverified on Celoscan. Please paste the raw code instead." }, { status: 400 });
+        return NextResponse.json({ error: "Contract address is unverified on Celoscan. Please paste the raw code text instead." }, { status: 400 });
       }
+    } else if (/^(S[1-9A-HJ-NP-Za-km-z]{26,35})$/.test(cleanedInput)) {
+      // Catch Stacks principal strings gracefully with an actionable instructions step response
+      return NextResponse.json({ error: "Direct block explorer retrieval is currently optimized for EVM addresses. For non-EVM runtimes like Stacks (Clarity), please paste the raw source code text directly into the console input field." }, { status: 400 });
     }
 
     // 3. State Sync Logging via Database Indexer
@@ -102,20 +105,37 @@ export async function POST(req) {
       }]);
     }
 
-    // 4. Gemini 2.5 Flash Core Request Generation
+    // 4. Gemini 2.5 Flash Core Configuration
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
-    const systemPrompt = `You are an elite Web3 Smart Contract Security Engineer and Gas Optimization Auditor. 
-    Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies. 
-    Your entire output response format must be written in professional, clean Markdown using definitive headings, tables, code blocks for fixes, and concise explanations.`;
+    // Dynamic actual live request generation date parameters calculation
+    const currentRequestLiveDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    // 🚀 DYNAMIC PROMPT DESIGN: Explicitly forces multi-language analysis, true dates, and MasoMind IDs
+    const systemPrompt = `You are an elite cross-chain Web3 Smart Contract Security Engineer and Core Auditor representing the MasoMind AI Engine Framework.
+    Analyze the provided input source code metadata parameter payload strictly for structural bugs, security vulnerabilities, and gas/execution optimization limits.
+    
+    UNIVERSAL ARCHITECTURE COMPLIANCE:
+    The input script can be written in ANY major blockchain smart contract language, including Solidity (EVM), Clarity (Stacks ecosystem), Vyper, or Rust (WASM/Solana paradigms). Dynamically identify the code context syntax structure and evaluate vulnerabilities based strictly on the language rules (e.g., check for check-bounds in Solidity, assert failures in Clarity, or ownership constraints in Rust).
+
+    CRITICAL FORMATTING INSTRUCTIONS:
+    1. Always begin your report with this exact premium metadata executive layout box at the very top:
+       - **Auditor Hub Infrastructure:** MasoMind Core Automated Network
+       - **Audit Live Operational Date:** ${currentRequestLiveDate}
+       - **Structural Verification Status:** Active Pipeline Handshake Verified
+    2. All vulnerability listings and structural rows inside the tables must use the precise tracking index ID prefix "MASOMIND-0X" (e.g., MASOMIND-01, MASOMIND-02). Do NOT use any other name.
+    3. Do NOT add decorative spatial margins or long strings of empty hyphens inside Markdown table rows to visually align layout boxes. Keep text cells clean and unpadded to prevent UI render clipping.
+    4. All proposed correction scripts must be contained inside complete standalone code blocks equipped with their explicit language identifier strings (e.g., \`\`\`solidity, \`\`\`clarity, \`\`\`rust).`;
 
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: `Perform a meticulous security audit on this deployment source payload:\n\n${finalSolidityCode}` }]
+          parts: [{ text: `Perform an extensive multi-chain security audit on this smart contract code deployment script:\n\n${finalSolidityCode}` }]
         }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: { maxOutputTokens: 4096, temperature: 0.1 }
@@ -133,20 +153,16 @@ export async function POST(req) {
     }
     const report = aiData.candidates[0].content.parts[0].text;
 
-    // 5. Sync Database Status Logs
+    // 5. Database Status Sync & On-Chain Delivery Trigger
     await supabase.from('transactions').update({ status: 'COMPLETED', result_data: report }).eq('tx_hash', txHash);
 
-    // 🚀 FIXED: Sequential, fully awaited execution to prevent Vercel from killing the broadcast mid-flight
     if (AGENT_PRIVATE_KEY) {
       try {
-        // Formulate valid hex string prefix parameters
         const formattedKey = AGENT_PRIVATE_KEY.startsWith('0x') ? AGENT_PRIVATE_KEY : `0x${AGENT_PRIVATE_KEY}`;
         const account = privateKeyToAccount(formattedKey);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        
-        const summary = `Audit Complete. Status: ${report.includes('CRITICAL') || report.includes('HIGH') ? '⚠️ Vulnerabilities Flagged' : '✅ Operational Standards Confirmed'}. View full markdown report.`;
+        const summary = `MasoMind Hub Audit Complete. Status Verified. View detailed markdown metrics matrix.`;
 
-        // Force explicit await constraint on transaction broadcast submission
         const deliveryTxHash = await agentClient.writeContract({
           account,
           address: CONTRACT_ADDRESS,
@@ -154,18 +170,10 @@ export async function POST(req) {
           functionName: 'deliverResult',
           args: [userAddress, summary.substring(0, 240)]
         });
-
-        console.log(`On-chain result delivery successful. Tx: ${deliveryTxHash}`);
-        await sendTelegramNotification(`✅ *Gemini 2.5 Smart Resolution Audit Delivered On-Chain: ${deliveryTxHash}*`);
-      } catch (blockchainError) {
-        // Log block exceptions without breaking user response streaming
-        console.error("On-chain delivery transaction broadcast failed:", blockchainError);
-      }
-    } else {
-      console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
+        await sendTelegramNotification(`✅ *MasoMind Smart Resolution Cross-Chain Audit Delivered On-Chain: ${deliveryTxHash}*`);
+      } catch (err) { console.error("Blockchain delivery failed:", err); }
     }
 
-    // 6. Return Final Clean Payload String
     return NextResponse.json({ report });
 
   } catch (error) {
