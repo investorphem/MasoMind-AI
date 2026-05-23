@@ -1,26 +1,40 @@
 import { createWalletClient, createPublicClient, custom, parseUnits } from 'viem';
 import { celo } from 'viem/chains';
 
-const CONTRACT_ADDRESS = '0x1d7c2c4c5e41dcdbe90b03d71399383dd1464717';
+// 🚀 UPDATED: New Contract Address
+const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const BASE_URL = 'https://masomind-sage.vercel.app'; // Your deployed Vercel app URL
 
+// 🚀 FIXED: Aligned token addresses exactly with your frontend configurations
 const TOKENS = {
-  cUSD: { address: '0x765de816845861e75a25fca122bb6898b8b1282a', decimals: 18 },
-  USDC: { address: '0xceba9300f2b948710d2653dd7b07f33a8b32118c', decimals: 6 },
-  USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a88248a566', decimals: 6 }
+  CUSD: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18 },
+  USDM: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18 },
+  USDC: { address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', decimals: 6 },
+  USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6 }
 };
 
+// 🚀 UPDATED: ABI renamed from 'executeService' to 'requestService' to match MasoMindV2
 const ABI = [
   {"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
   {"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]},
-  {"name":"executeService","type":"function","stateMutability":"nonpayable","inputs":[{"name":"token","type":"address"},{"name":"amount","type":"uint256"},{"name":"prompt","type":"string"},{"name":"serviceType","type":"string"}]}
+  {
+    "name": "requestService",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "token", "type": "address" },
+      { "name": "amount", "type": "uint256" },
+      { "name": "prompt", "type": "string" },
+      { "name": "serviceType", "type": "string" }
+    ]
+  }
 ];
 
 export class MasoMind {
   constructor(provider) {
     if (!provider) throw new Error("A Web3 provider (e.g., window.ethereum) is required.");
 
-    this.publicClient = createPublicClient({ chain: celo, transport: custom(provider) });
+    this.publicClient = createPublicClient({ chain: celo, transport: http() });
     this.walletClient = createWalletClient({ chain: celo, transport: custom(provider) });
   }
 
@@ -51,12 +65,12 @@ export class MasoMind {
       await this.publicClient.waitForTransactionReceipt({ hash: approveHash });
     }
 
-    // 3. Execute Payment
+    // 3. Execute Payment via requestService
     const txHash = await this.walletClient.writeContract({
       account,
       address: CONTRACT_ADDRESS,
       abi: ABI,
-      functionName: 'executeService',
+      functionName: 'requestService',
       args: [token.address, amountToCharge, prompt, serviceType],
     });
 
@@ -64,7 +78,7 @@ export class MasoMind {
     return txHash;
   }
 
-  async generateAsset(prompt, tokenSymbol = 'cUSD') {
+  async generateAsset(prompt, tokenSymbol = 'USDT') {
     const [account] = await this.walletClient.requestAddresses();
     const txHash = await this._processPayment(account, tokenSymbol, '0.10', prompt, 'IMAGE');
 
@@ -79,7 +93,7 @@ export class MasoMind {
     return data.imageUrl;
   }
 
-  async auditContract(code, tokenSymbol = 'cUSD') {
+  async auditContract(code, tokenSymbol = 'USDT') {
     const [account] = await this.walletClient.requestAddresses();
     const txHash = await this._processPayment(account, tokenSymbol, '0.05', code, 'AUDIT');
 
@@ -92,5 +106,37 @@ export class MasoMind {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     return data.report;
+  }
+
+  // 🚀 ADDED: Complete integration support for the Music compilation endpoint
+  async generateMusic(prompt, tokenSymbol = 'USDT') {
+    const [account] = await this.walletClient.requestAddresses();
+    const txHash = await this._processPayment(account, tokenSymbol, '0.50', prompt, 'MUSIC');
+
+    const res = await fetch(`${BASE_URL}/api/generate-music`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, txHash })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.mediaUrl;
+  }
+
+  // 🚀 ADDED: Complete integration support for the Video render endpoint
+  async generateVideo(prompt, tokenSymbol = 'USDT') {
+    const [account] = await this.walletClient.requestAddresses();
+    const txHash = await this._processPayment(account, tokenSymbol, '1.00', prompt, 'VIDEO');
+
+    const res = await fetch(`${BASE_URL}/api/generate-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, txHash })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.mediaUrl;
   }
 }
