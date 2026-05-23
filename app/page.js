@@ -98,7 +98,7 @@ export default function MasoMindApp() {
   const { connect, connectors } = useConnect();
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const [mode, setMode] = useState('IMAGE'); 
+  const [mode, setMode] = useState('MUSIC');
   const [activeToken, setActiveToken] = useState('USDT'); 
   const [balances, setBalances] = useState({ cUSD: '0.00', USDC: '0.00', USDT: '0.00' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); 
@@ -514,13 +514,13 @@ export default function MasoMindApp() {
         </div>
 
         {!pendingState && (
-          <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
-            <button onClick={() => { setMode('IMAGE'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
-            <button onClick={() => { setMode('AUDIT'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
-            <button onClick={() => { setMode('MUSIC'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
-            <button onClick={() => { setMode('VIDEO'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
-          </div>
-        )}
+  <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full max-w-md mx-auto">
+    <button onClick={() => { setMode('MUSIC'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'MUSIC' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Music className="w-4 h-4" /> Music</button>
+    <button onClick={() => { setMode('VIDEO'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'VIDEO' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Video className="w-4 h-4" /> Video</button>
+    <button onClick={() => { setMode('IMAGE'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'IMAGE' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><ImageIcon className="w-4 h-4" /> Image</button>
+    <button onClick={() => { setMode('AUDIT'); }} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold ${mode === 'AUDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}><Code className="w-4 h-4" /> Audit</button>
+  </div>
+)}
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto space-y-5">
