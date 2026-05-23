@@ -78,7 +78,7 @@ export class MasoMind {
     return data.imageUrl;
   }
 
-  async auditContract(code, tokenSymbol = 'cUSD') {
+  async auditContract(code, tokenSymbol = 'cUSD') 
     const [account] = await this.walletClient.requestAddresses();
     const txHash = await this._processPayment(account, tokeymbol, '0.05', code, 'AUDIT');
 
