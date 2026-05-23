@@ -74,7 +74,7 @@ export class MasoMind {
     });
     
     const data = await res.json()
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(dat.error);
     return data.imageUrl;
   }
 
