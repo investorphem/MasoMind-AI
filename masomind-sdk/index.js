@@ -47,7 +47,7 @@ export class MasoMind {
         abi: ABI,
         functionName: 'approve',
         args: [CONTRACT_ADDRESS, approveAmount],
-      });
+      })
       await this.publicClient.waitForTransactionReceipt({ hash: approveHash });
     }
 
