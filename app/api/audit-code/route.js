@@ -102,13 +102,19 @@ export async function POST(req) {
       }]);
     }
 
-    // 4. 🚀 FIXED: Target model corrected to active gemini-2.5-flash infrastructure
+    // 4. Gemini 2.5 Flash Core Configuration
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
-    const systemPrompt = `You are an elite Web3 Smart Contract Security Engineer and Gas Optimization Auditor. 
-    Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies. 
-    Your entire output response format must be written in professional, clean Markdown using definitive headings, tables, code blocks for fixes, and concise explanations.`;
+    // 🚀 ENTERPRISE CONSTRAINT UPDATE: Restricts wide padding blocks and spatial text layout errors
+    const systemPrompt = `You are an elite enterprise-level Web3 Smart Contract Security Engineer and Core Auditor representing Masonode Technologies Limited.
+    Analyze the provided Solidity/Web3 source code strictly for vulnerabilities (reentrancy, access control bugs, overflows) and gas inefficiencies.
+    
+    CRITICAL FORMATTING INSTRUCTIONS:
+    1. Do NOT under any circumstances add manual horizontal spacing inside Markdown table cells or lines to visually split text columns. Keep the syntax tight (e.g., "| ID | Severity | Description |" with single space wrappers).
+    2. Never output long sequences of consecutive blank lines or trailing spatial chunks.
+    3. Structure the audit report with tight headings (## and ###) and bulleted lists.
+    4. All fixes must be contained inside specific code blocks with clean language syntax labels (e.g., \`\`\`solidity).`;
 
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -118,7 +124,7 @@ export async function POST(req) {
           parts: [{ text: `Perform a meticulous security audit on this deployment source payload:\n\n${finalSolidityCode}` }]
         }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.2 }
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.1 } // Dropping temp to 0.1 handles absolute alignment deterministic accuracy
       })
     });
 
