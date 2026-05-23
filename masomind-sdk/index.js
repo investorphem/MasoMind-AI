@@ -12,8 +12,7 @@ const TOKENS = {
 
 const ABI = [
   {"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address",{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
-  {"name":"approve","type":"function","stateMutability":"nonpayabe","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]},
- {"name":"executeService","type":"function","stateMtability":"nonpayable","inputs":[{"name":"token","type":"address"},{"name":"amount","type":"uint256"},{"name":"prompt","type":"string"},{"name":"serviceType","type":"sring"}]}
+  {"name":"approve","type":"function","stateMutability":"nonpayabe","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]}, {"name":"executeService","type":"function","stateMtability":"nonpayable","inputs":[{"name":"token","type":"address"},{"name":"amount","type":"uint256"},{"name":"prompt","type":"string"},{"name":"serviceType","type":"sring"}]}
 ];
 
 export class MasoMind {
