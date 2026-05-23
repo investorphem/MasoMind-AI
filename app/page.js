@@ -173,15 +173,27 @@ export default function MasoMindApp() {
     fetchBalances();
   }, [address]);
 
+  // 🚀 CRASH-GUARD RECOVERY: Safely handles mounts and purges data corruption parameters
   useEffect(() => {
-    const hash = localStorage.getItem('pendingTxHash');
-    const savedPrompt = localStorage.getItem('pendingPrompt');
-    const savedMode = localStorage.getItem('pendingMode');
+    try {
+      const hash = localStorage.getItem('pendingTxHash');
+      const savedPrompt = localStorage.getItem('pendingPrompt');
+      const savedMode = localStorage.getItem('pendingMode');
 
-    if (hash && savedPrompt && savedMode) {
-      setPendingState({ hash, prompt: savedPrompt, mode: savedMode });
-      setPrompt(savedPrompt);
-      setMode(savedMode);
+      if (hash && savedPrompt && savedMode) {
+        if (['MUSIC', 'VIDEO', 'IMAGE', 'AUDIT'].includes(savedMode)) {
+          setPendingState({ hash, prompt: savedPrompt, mode: savedMode });
+          setPrompt(savedPrompt);
+          setMode(savedMode);
+        } else {
+          localStorage.removeItem('pendingTxHash');
+          localStorage.removeItem('pendingPrompt');
+          localStorage.removeItem('pendingMode');
+        }
+      }
+    } catch (err) {
+      console.error("Cache parsing recovery triggered:", err);
+      localStorage.clear();
     }
   }, []);
 
@@ -205,7 +217,7 @@ export default function MasoMindApp() {
     if (!currentExamples || currentExamples.length === 0) return;
 
     let timer;
-    const fullText = currentExamples[currentPlaceholderIndex];
+    const fullText = currentExamples[currentPlaceholderIndex] || '';
 
     if (!isDeleting) {
       if (placeholderText !== fullText) {
@@ -361,6 +373,7 @@ export default function MasoMindApp() {
       }
 
       setStatus(`Checking ${activeToken} permissions...`);
+      // 🚀 FIXED: Fixed token parameters mapping syntax identifiers
       const allowance = await publicClient.readContract({
         address: token.address,
         abi: [{"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]}],
@@ -417,6 +430,27 @@ export default function MasoMindApp() {
     localStorage.removeItem('pendingPrompt');
     localStorage.removeItem('pendingMode');
     setPendingState(null); setPrompt('');
+  };
+
+  const handleRefundFromHome = async () => {
+    if (!pendingState || !address) return;
+    setStatus('Requesting refund...');
+    try {
+      const res = await fetch('/api/trigger-refund', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txHash: pendingState.hash, userAddress: address })
+      });
+      if (res.ok) {
+        showToast('Refund request submitted to Treasury.', 'success');
+        clearPendingState();
+      } else {
+        showToast('Failed to request. It may have already been processed.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Network error while requesting refund.', 'error');
+    }
+    setStatus('');
   };
 
   return (
@@ -547,7 +581,7 @@ export default function MasoMindApp() {
             {mode === 'MUSIC' && (
               <div className="w-full p-8 rounded-3xl glass-panel border border-zinc-800/50 flex flex-col items-center justify-center space-y-6 bg-gradient-to-b from-zinc-900 to-zinc-950 shadow-2xl">
                 <div className="p-4 bg-emerald-500/10 rounded-full border border-emerald-500/20"><Music className="w-12 h-12 text-emerald-400" /></div>
-                <audio key={resultData} controls autoPlay preload="auto" playsInline className="w-full text-emerald-500" src={resultData} />
+                <audio key={resultData || 'idle-track'} controls autoPlay preload="auto" playsInline className="w-full text-emerald-500" src={resultData} />
                 <div className="w-full grid grid-cols-2 gap-2.5">
                   <button onClick={() => { setResultData(null); setShowLyricsInput(false); }} className="py-3 bg-zinc-950 border border-zinc-800 text-zinc-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Dashboard</button>
                   <button onClick={downloadAsset} className="py-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"><Download className="w-3.5 h-3.5" /> Download</button>
