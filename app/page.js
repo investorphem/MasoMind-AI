@@ -247,7 +247,7 @@ export default function MasoMindApp() {
     if (!resultData) return;
     navigator.clipboard.writeText(resultData);
     setCopied(true);
-    showToast("Audit copied to clipboard!", "success");
+    showToast("Audit report copied to clipboard!", "success");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -575,7 +575,39 @@ export default function MasoMindApp() {
                 </div>
                 {/* 🚀 VISIBILITY FIX: Added prose and explicit theme configurations to prevent invisible elements */}
                 <div className="flex-1 overflow-y-auto p-5 custom-scrollbar text-sm leading-relaxed text-zinc-200 prose prose-invert max-w-none prose-headings:text-emerald-400 prose-p:text-zinc-300 prose-table:text-zinc-300 prose-strong:text-white">
-                  <ReactMarkdown>{resultData}</ReactMarkdown>
+                  <ReactMarkdown
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        const codeString = String(children).replace(/\n$/, '');
+                        
+                        if (!inline && match) {
+                          return (
+                            <div className="relative group my-4 rounded-xl overflow-hidden border border-zinc-800/80 bg-zinc-950/60 shadow-xl">
+                              <div className="flex items-center justify-between px-4 py-2 bg-zinc-900/90 border-b border-zinc-800 text-[10px] font-mono text-zinc-400 tracking-wider">
+                                <span className="text-emerald-400 font-bold uppercase">{match[1]} Matrix Fix</span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(codeString);
+                                    showToast(`${match[1].toUpperCase()} fix copied to clipboard!`, "success");
+                                  }}
+                                  className="flex items-center gap-1.5 hover:text-white text-zinc-400 transition-colors font-sans bg-zinc-800 px-2 py-1 rounded-md border border-zinc-700/60"
+                                >
+                                  <Copy className="w-3 h-3" /> Copy Fix Only
+                                </button>
+                              </div>
+                              <pre className="p-4 overflow-x-auto font-mono text-xs text-zinc-200 bg-zinc-950/40 !m-0 custom-scrollbar">
+                                <code className={className} {...props}>{children}</code>
+                              </pre>
+                            </div>
+                          );
+                        }
+                        return <code className="bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-300 font-mono text-xs" {...props}>{children}</code>;
+                      }
+                    }}
+                  >
+                    {resultData}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
