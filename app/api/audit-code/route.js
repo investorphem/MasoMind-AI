@@ -5,7 +5,6 @@ import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
 import { sendTelegramNotification } from '../../../lib/telegram';
 
-// 🚀 Core Contract Infrastructure Pointers
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
@@ -23,24 +22,17 @@ const TOKENS = {
 };
 
 const REQUEST_ABI = [{
-  "name": "requestService",
-  "type": "function",
-  "stateMutability": "nonpayable",
+  "name": "requestService", "type": "function", "stateMutability": "nonpayable",
   "inputs": [
-    { "name": "token", "type": "address" },
-    { "name": "amount", "type": "uint256" },
-    { "name": "prompt", "type": "string" },
-    { "name": "serviceType", "type": "string" }
+    { "name": "token", "type": "address" }, { "name": "amount", "type": "uint256" },
+    { "name": "prompt", "type": "string" }, { "name": "serviceType", "type": "string" }
   ]
 }];
 
 const DELIVERY_ABI = [{
-  "name": "deliverResult",
-  "type": "function",
-  "stateMutability": "nonpayable",
+  "name": "deliverResult", "type": "function", "stateMutability": "nonpayable",
   "inputs": [
-    { "name": "user", "type": "address" },
-    { "name": "result", "type": "string" }
+    { "name": "user", "type": "address" }, { "name": "result", "type": "string" }
   ]
 }];
 
@@ -54,7 +46,7 @@ export async function POST(req) {
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
 
-    // 1. Verify Transaction Validity
+    // 1. Verify Payment Transaction Validity
     const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
     if (receipt.status !== 'success' || receipt.to.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
       return NextResponse.json({ error: "Invalid transaction signature" }, { status: 403 });
@@ -64,7 +56,6 @@ export async function POST(req) {
     const { args } = decodeFunctionData({ abi: REQUEST_ABI, data: transaction.input });
     const [paidToken, paidAmount, , paidServiceType] = args;
 
-    // 🛡️ Ensure payment criteria matches precisely 0.05 for AUDIT service types
     const decimals = TOKENS[paidToken.toLowerCase()];
     if (!decimals || paidAmount < parseUnits('0.05', decimals) || paidServiceType !== 'AUDIT') {
       return NextResponse.json({ error: "Invalid execution routing parameters" }, { status: 403 });
@@ -72,12 +63,41 @@ export async function POST(req) {
 
     const userAddress = receipt.from;
 
-    // 2. State Sync Logging via Database Indexer
+    // 2. 🚀 NEW: Dynamic Address Resolution Interceptor
+    let finalSolidityCode = prompt;
+    const cleanedInput = prompt.trim();
+    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(cleanedInput);
+
+    if (isAddress) {
+      // Hit the official free-tier Celoscan API explorer module
+      const celoscanApiKey = process.env.CELOSCAN_API_KEY || ''; 
+      const celoscanUrl = `https://api.celoscan.io/api?module=contract&action=getsourcecode&address=${cleanedInput}${celoscanApiKey ? `&apikey=${celoscanApiKey}` : ''}`;
+      
+      const scanRes = await fetch(celoscanUrl);
+      if (!scanRes.ok) {
+        return NextResponse.json({ error: "Failed to connect to Celo block explorer nodes." }, { status: 502 });
+      }
+
+      const scanData = await scanRes.json();
+      
+      if (scanData.status === "1" && scanData.result?.[0]?.SourceCode) {
+        finalSolidityCode = scanData.result[0].SourceCode;
+        
+        // Handle rare standard multi-file JSON input wraps cleanly
+        if (finalSolidityCode.startsWith('{{')) {
+          finalSolidityCode = finalSolidityCode.substring(1, finalSolidityCode.length - 1);
+        }
+      } else {
+        return NextResponse.json({ error: "Contract address is unverified on Celoscan. Please paste the raw code instead." }, { status: 400 });
+      }
+    }
+
+    // 3. State Sync Logging via Database Indexer
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
         tx_hash: txHash, 
-        prompt: prompt, 
+        prompt: prompt, // Keeps historical tracking as the original address/input string
         service_type: 'AUDIT', 
         status: 'PENDING', 
         user_address: userAddress.toLowerCase(),
@@ -85,7 +105,7 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. 🚀 FREE TIER GEMINI COMPLIANT CODE AUDITING MATRIX
+    // 4. Gemini Free Flash Audit Generation Core
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
@@ -95,20 +115,13 @@ export async function POST(req) {
 
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: `Perform a meticulous security audit on this deployment source payload:\n\n${prompt}` }]
+          parts: [{ text: `Perform a meticulous security audit on this deployment source payload:\n\n${finalSolidityCode}` }]
         }],
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        generationConfig: {
-          maxOutputTokens: 4096,
-          temperature: 0.2
-        }
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.2 }
       })
     });
 
@@ -118,45 +131,35 @@ export async function POST(req) {
     }
 
     const aiData = await aiResponse.json();
-    
-    // Safely parse the text block canditate matching Google's execution schema
     if (!aiData.candidates || !aiData.candidates[0]?.content?.parts[0]?.text) {
       throw new Error("Invalid structure returned from the Gemini modeling endpoint.");
     }
     const report = aiData.candidates[0].content.parts[0].text;
 
-    // 4. PERSISTENT TRANSACTION STATUS RESOLUTION AND DELIVERY CLOSURE
-    await supabase.from('transactions')
-      .update({ status: 'COMPLETED', result_data: report })
-      .eq('tx_hash', txHash);
+    // 5. Database Status Sync & On-Chain Delivery Trigger
+    await supabase.from('transactions').update({ status: 'COMPLETED', result_data: report }).eq('tx_hash', txHash);
 
     (async () => {
       try {
         const account = privateKeyToAccount(AGENT_PRIVATE_KEY);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-
-        // Build summary telemetry payload string
         const summary = `Audit Complete. Status: ${report.includes('CRITICAL') || report.includes('HIGH') ? '⚠️ Vulnerabilities Flagged' : '✅ Operational Standards Confirmed'}. View full markdown report.`;
 
         await agentClient.writeContract({
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summary.substring(0, 240)] // Enforces string optimization parameters
+          args: [userAddress, summary.substring(0, 240)]
         });
-        await sendTelegramNotification(`✅ *Gemini Free Flash Audit Settled and Delivered On-Chain*`);
-      } catch (err) {
-        console.error("Non-blocking background blockchain delivery failed:", err);
-      }
+        await sendTelegramNotification(`✅ *Gemini Smart Resolution Audit Delivered On-Chain*`);
+      } catch (err) { console.error("Blockchain delivery failed:", err); }
     })();
 
     return NextResponse.json({ report });
 
   } catch (error) {
     console.error("Audit API Handler Critical Error:", error);
-    if (globalTxHash) {
-        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-    }
+    if (globalTxHash) await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
