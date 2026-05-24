@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, fallback } from 'viem';
+import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, formatUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
@@ -19,9 +19,9 @@ const celoTransports = fallback([
 ]);
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD / USDm
-  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,  // USDC
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6   // USDT
+  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'USDm/cUSD' }, 
+  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }
 };
 
 const REQUEST_ABI = [{
@@ -57,6 +57,8 @@ const PREMIUM_LOOPS = {
 
 export async function POST(req) {
   let globalTxHash = null; 
+  let cachedUserAddress = null;
+  let cachedTokenInfo = { symbol: 'Unknown', amount: '0.00' };
 
   try {
     const { prompt, txHash } = await req.json();
@@ -76,14 +78,27 @@ export async function POST(req) {
     const [paidToken, paidAmount, , paidServiceType] = args;
 
     // 🛡️ Ensure payment criteria matches precisely 0.50 for MUSIC service types
-    const decimals = TOKENS[paidToken.toLowerCase()];
-    if (!decimals || paidAmount < parseUnits('0.50', decimals) || paidServiceType !== 'MUSIC') {
+    const tokenConfig = TOKENS[paidToken.toLowerCase()];
+    if (!tokenConfig || paidAmount < parseUnits('0.50', tokenConfig.decimals) || paidServiceType !== 'MUSIC') {
       return NextResponse.json({ error: "Invalid execution routing parameters" }, { status: 403 });
     }
 
-    const userAddress = receipt.from;
+    cachedUserAddress = receipt.from;
+    const humanAmount = formatUnits(paidAmount, tokenConfig.decimals);
+    cachedTokenInfo = { symbol: tokenConfig.symbol, amount: humanAmount };
 
-    // 2. State Sync Logging via Database Indexer
+    // 🚀 STEP AHEAD ORDER: Inbound pipeline payment logging notification fired instantly
+    await sendTelegramNotification(
+      `📥 *MASOMIND INBOUND REQUEST STACK*\n` +
+      `============================\n` +
+      `🏢 *Service Type:* AI Music Studio Loop\n` +
+      `👤 *User Address:* \`${cachedUserAddress}\`\n` +
+      `💰 *Settled Payment:* ${humanAmount} ${tokenConfig.symbol}\n` +
+      `⛓️ *Transaction Hash:* \`${txHash}\`\n` +
+      `⏳ *Status:* Pipeline Activated. Processing Audio Matrix Template...`
+    );
+
+    // 🚀 STEP AHEAD ORDER: Write row inside database indexer immediately to establish data safety fallback
     const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
     if (!existingTx) {
       await supabase.from('transactions').insert([{
@@ -91,7 +106,7 @@ export async function POST(req) {
         prompt: prompt, 
         service_type: 'MUSIC', 
         status: 'PENDING', 
-        user_address: userAddress.toLowerCase(),
+        user_address: cachedUserAddress.toLowerCase(),
         token_address: paidToken.toLowerCase() 
       }]);
     }
@@ -113,7 +128,7 @@ export async function POST(req) {
         const formattedKey = AGENT_PRIVATE_KEY.startsWith('0x') ? AGENT_PRIVATE_KEY : `0x${AGENT_PRIVATE_KEY}`;
         const account = privateKeyToAccount(formattedKey);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        
+
         const summaryMsg = `Vocal Track Complete. Compilation Reference URL: ${mediaUrl.substring(0, 45)}...`;
 
         // Force sequence block halt until transaction receipt returns safely from the RPC node
@@ -122,23 +137,60 @@ export async function POST(req) {
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summaryMsg]
+          args: [cachedUserAddress, summaryMsg]
         });
 
         console.log(`On-chain audio asset delivery receipt broadcast confirmed: ${deliveryTxHash}`);
-        await sendTelegramNotification(`🎵 *MasoMind Agent Vocal Track Delivered On-Chain*`);
+        
+        // 🚀 SUCCESS TELEMETRY: Automated notification block broadcast
+        await sendTelegramNotification(
+          `✅ *MASOMIND EXECUTION SUCCESS*\n` +
+          `============================\n` +
+          `🤖 *Agent Identity:* MasoMind Enterprise Audio Studio Node\n` +
+          `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
+          `🎵 *Compiled Asset:* \`${mediaUrl}\`\n` +
+          `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
+          `📦 *Outbound Delivery Hash:* \`${deliveryTxHash}\`\n` +
+          `🚀 *Status:* On-Chain Settlement Complete. Client Workspace Sync Active.`
+        );
       } catch (blockchainError) { 
-        console.error("On-chain delivery transaction broadcast failed:", blockchainError); 
+        console.error("On-chain delivery transaction broadcast failed:", blockchainError);
+        
+        // 🚀 CONGESTION TELEMETRY: Non-blocking warning notification to prevent rendering loops
+        await sendTelegramNotification(
+          `⚠️ *MASOMIND BLOCKCHAIN DELIVERY DELAY*\n` +
+          `============================\n` +
+          `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
+          `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
+          `❌ *RPC Error Exception:* \`${blockchainError.message.substring(0, 120)}...\`\n` +
+          `💡 *System Note:* Audio track successfully generated and indexed inside Supabase database tables. Client can stream asset natively, but contract state event callback timed out.`
+        );
       }
     } else {
       console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
     }
 
-    // 6. Secure Return Response Streaming
+    // 6. Return Clean Fluid Payload Reference
     return NextResponse.json({ mediaUrl });
+    
   } catch (error) {
     console.error("Music API Handler Critical Error:", error);
-    if (globalTxHash) await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+    
+    // 🚀 FAULT TELEMETRY: Immediate tracking notification with open user refund states mapping
+    if (globalTxHash) {
+        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+        
+        await sendTelegramNotification(
+          `🚨 *MASOMIND AGENT EXCEPTION CRASH*\n` +
+          `============================\n` +
+          `🏢 *Failed Layer:* Audio Synthesis Splicer Process\n` +
+          `👤 *Target User Account:* \`${cachedUserAddress || 'Unresolved/Unknown Address'}\`\n` +
+          `💰 *Captured Funds:* ${cachedTokenInfo.amount} ${cachedTokenInfo.symbol}\n` +
+          `⛓️ *Inbound Request Hash:* \`${globalTxHash}\`\n` +
+          `💥 *Critical System Error:* \`${error.message}\`\n` +
+          `💸 *Refund Path Status:* Open. Row logged securely. User can clear client dashboard and click 'Request Refund'.`
+        );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
