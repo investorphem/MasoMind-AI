@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, fallback } from 'viem';
+import { createPublicClient, createWalletClient, http, decodeFunctionData, parseUnits, formatUnits, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { supabase } from '../../../lib/supabase';
 import { sendTelegramNotification } from '../../../lib/telegram';
 
+// 🚀 Core Contract Infrastructure Pointers
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const AGENT_PRIVATE_KEY = process.env.AGENT_PRIVATE_KEY; 
 
@@ -16,9 +17,9 @@ const celoTransports = fallback([
 ]);
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': 18, // cUSD / USDm
-  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': 6,  // USDC
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': 6   // USDT
+  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'USDm/cUSD' }, 
+  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }
 };
 
 const REQUEST_ABI = [{
@@ -38,6 +39,8 @@ const DELIVERY_ABI = [{
 
 export async function POST(req) {
   let globalTxHash = null;
+  let cachedUserAddress = null;
+  let cachedTokenInfo = { symbol: 'Unknown', amount: '0.00' };
 
   try {
     const { prompt, txHash } = await req.json();
@@ -56,15 +59,41 @@ export async function POST(req) {
     const { args } = decodeFunctionData({ abi: REQUEST_ABI, data: transaction.input });
     const [paidToken, paidAmount, , paidServiceType] = args;
 
-    const decimals = TOKENS[paidToken.toLowerCase()];
-    if (!decimals || paidAmount < parseUnits('0.05', decimals) || paidServiceType !== 'AUDIT') {
+    const tokenConfig = TOKENS[paidToken.toLowerCase()];
+    if (!tokenConfig || paidAmount < parseUnits('0.05', tokenConfig.decimals) || paidServiceType !== 'AUDIT') {
       return NextResponse.json({ error: "Invalid execution routing parameters" }, { status: 403 });
     }
 
-    const userAddress = receipt.from;
+    cachedUserAddress = receipt.from;
+    const humanAmount = formatUnits(paidAmount, tokenConfig.decimals);
+    cachedTokenInfo = { symbol: tokenConfig.symbol, amount: humanAmount };
 
-    // 2. Multi-Chain Address Detection Rule Blocks
-    let finalSolidityCode = prompt;
+    // 🚀 STEP AHEAD ORDER: Inbound pipeline payment logging notification fired instantly
+    await sendTelegramNotification(
+      `📥 *MASOMIND INBOUND REQUEST STACK*\n` +
+      `============================\n` +
+      `🏢 *Service Type:* Audit Engine Protocol\n` +
+      `👤 *User Address:* \`${cachedUserAddress}\`\n` +
+      `💰 *Settled Payment:* ${humanAmount} ${tokenConfig.symbol}\n` +
+      `⛓️ *Transaction Hash:* \`${txHash}\`\n` +
+      `⏳ *Status:* Pipeline Activated. Processing Source Payload...`
+    );
+
+    // 🚀 STEP AHEAD ORDER: Write row inside database indexer immediately to prevent broken refund data profiles
+    const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
+    if (!existingTx) {
+      await supabase.from('transactions').insert([{
+        tx_hash: txHash, 
+        prompt: prompt, 
+        service_type: 'AUDIT', 
+        status: 'PENDING', 
+        user_address: cachedUserAddress.toLowerCase(),
+        token_address: paidToken.toLowerCase()
+      }]);
+    }
+
+    // 2. Multi-Chain Address Resolution Interceptor
+    let finalCodeToAudit = prompt;
     const cleanedInput = prompt.trim();
     const isEvmAddress = /^0x[a-fA-F0-9]{40}$/.test(cleanedInput);
 
@@ -73,53 +102,35 @@ export async function POST(req) {
       const celoscanUrl = `https://api.celoscan.io/api?module=contract&action=getsourcecode&address=${cleanedInput}${celoscanApiKey ? `&apikey=${celoscanApiKey}` : ''}`;
       
       const scanRes = await fetch(celoscanUrl);
-      if (!scanRes.ok) {
-        return NextResponse.json({ error: "Failed to connect to Celo block explorer nodes." }, { status: 502 });
-      }
+      if (!scanRes.ok) throw new Error("Failed to reach block explorer infrastructure nodes.");
 
       const scanData = await scanRes.json();
       
       if (scanData.status === "1" && scanData.result?.[0]?.SourceCode) {
-        finalSolidityCode = scanData.result[0].SourceCode;
-        if (finalSolidityCode.startsWith('{{')) {
-          finalSolidityCode = finalSolidityCode.substring(1, finalSolidityCode.length - 1);
+        finalCodeToAudit = scanData.result[0].SourceCode;
+        if (finalCodeToAudit.startsWith('{{')) {
+          finalCodeToAudit = finalCodeToAudit.substring(1, finalCodeToAudit.length - 1);
         }
       } else {
-        return NextResponse.json({ error: "Contract address is unverified on Celoscan. Please paste the raw code text instead." }, { status: 400 });
+        throw new Error("Target contract address is unverified on Celoscan explorers. Prompt aborted.");
       }
     } else if (/^(S[1-9A-HJ-NP-Za-km-z]{26,35})$/.test(cleanedInput)) {
-      // Catch Stacks principal strings gracefully with an actionable instructions step response
-      return NextResponse.json({ error: "Direct block explorer retrieval is currently optimized for EVM addresses. For non-EVM runtimes like Stacks (Clarity), please paste the raw source code text directly into the console input field." }, { status: 400 });
+      throw new Error("Direct block explorer retrieval is currently optimized for EVM addresses. Please paste your raw Stacks/Clarity source code text configurations straight into the dashboard console input instead.");
     }
 
-    // 3. State Sync Logging via Database Indexer
-    const { data: existingTx } = await supabase.from('transactions').select('*').eq('tx_hash', txHash).single();
-    if (!existingTx) {
-      await supabase.from('transactions').insert([{
-        tx_hash: txHash, 
-        prompt: prompt, 
-        service_type: 'AUDIT', 
-        status: 'PENDING', 
-        user_address: userAddress.toLowerCase(),
-        token_address: paidToken.toLowerCase()
-      }]);
-    }
-
-    // 4. Gemini 2.5 Flash Core Configuration
+    // 3. Gemini 2.5 Flash Core Configuration Pipeline Execution
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY environment variable is missing.");
 
-    // Dynamic actual live request generation date parameters calculation
     const currentRequestLiveDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // 🚀 DYNAMIC PROMPT DESIGN: Explicitly forces multi-language analysis, true dates, and MasoMind IDs
     const systemPrompt = `You are an elite cross-chain Web3 Smart Contract Security Engineer and Core Auditor representing the MasoMind AI Engine Framework.
     Analyze the provided input source code metadata parameter payload strictly for structural bugs, security vulnerabilities, and gas/execution optimization limits.
     
     UNIVERSAL ARCHITECTURE COMPLIANCE:
-    The input script can be written in ANY major blockchain smart contract language, including Solidity (EVM), Clarity (Stacks ecosystem), Vyper, or Rust (WASM/Solana paradigms). Dynamically identify the code context syntax structure and evaluate vulnerabilities based strictly on the language rules (e.g., check for check-bounds in Solidity, assert failures in Clarity, or ownership constraints in Rust).
+    The input script can be written in ANY major blockchain smart contract language, including Solidity (EVM), Clarity (Stacks ecosystem), Vyper, or Rust (WASM/Solana paradigms). Dynamically identify the code context syntax structure and evaluate vulnerabilities based strictly on the language rules.
 
     CRITICAL FORMATTING INSTRUCTIONS:
     1. Always begin your report with this exact premium metadata executive layout box at the very top:
@@ -135,7 +146,7 @@ export async function POST(req) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: `Perform an extensive multi-chain security audit on this smart contract code deployment script:\n\n${finalSolidityCode}` }]
+          parts: [{ text: `Perform an extensive multi-chain security audit on this smart contract code deployment script:\n\n${finalCodeToAudit}` }]
         }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: { maxOutputTokens: 4096, temperature: 0.1 }
@@ -153,32 +164,73 @@ export async function POST(req) {
     }
     const report = aiData.candidates[0].content.parts[0].text;
 
-    // 5. Database Status Sync & On-Chain Delivery Trigger
+    // 4. Update Database State to COMPLETED
     await supabase.from('transactions').update({ status: 'COMPLETED', result_data: report }).eq('tx_hash', txHash);
 
+    // 5. Secure On-Chain Result Delivery Action
     if (AGENT_PRIVATE_KEY) {
       try {
         const formattedKey = AGENT_PRIVATE_KEY.startsWith('0x') ? AGENT_PRIVATE_KEY : `0x${AGENT_PRIVATE_KEY}`;
         const account = privateKeyToAccount(formattedKey);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
+        
         const summary = `MasoMind Hub Audit Complete. Status Verified. View detailed markdown metrics matrix.`;
 
+        // Force explicit execution constraint inside main execution threads
         const deliveryTxHash = await agentClient.writeContract({
           account,
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summary.substring(0, 240)]
+          args: [cachedUserAddress, summary.substring(0, 240)]
         });
-        await sendTelegramNotification(`✅ *MasoMind Smart Resolution Cross-Chain Audit Delivered On-Chain: ${deliveryTxHash}*`);
-      } catch (err) { console.error("Blockchain delivery failed:", err); }
+
+        // 🚀 SUCCESS TELEMETRY: Automated notification broadcast
+        await sendTelegramNotification(
+          `✅ *MASOMIND EXECUTION SUCCESS*\n` +
+          `============================\n` +
+          `🤖 *Agent Identity:* MasoMind Enterprise Auditor Node\n` +
+          `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
+          `📊 *Vulnerability Findings:* ${report.includes('CRITICAL') || report.includes('HIGH') ? '⚠️ Vulnerabilities Flagged' : '🛡️ Safe/Clean Score'}\n` +
+          `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
+          `📦 *Outbound Delivery Hash:* \`${deliveryTxHash}\`\n` +
+          `🚀 *Status:* On-Chain Settlement Complete. Client Workspace Sync Active.`
+        );
+      } catch (blockchainError) {
+        console.error("On-chain delivery transaction broadcast failed:", blockchainError);
+        
+        // 🚀 CONGESTION TELEMETRY: Non-blocking warning notification to prevent rendering loops
+        await sendTelegramNotification(
+          `⚠️ *MASOMIND BLOCKCHAIN DELIVERY DELAY*\n` +
+          `============================\n` +
+          `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
+          `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
+          `❌ *RPC Error Exception:* \`${blockchainError.message.substring(0, 120)}...\`\n` +
+          `💡 *System Note:* Audit successfully compiled and indexed inside Supabase database tables. Client can read report natively, but contract state event callback timed out.`
+        );
+      }
     }
 
     return NextResponse.json({ report });
 
   } catch (error) {
     console.error("Audit API Handler Critical Error:", error);
-    if (globalTxHash) await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+    
+    // 🚀 FAULT TELEMETRY: Immediate tracking notification with open user refund states mapping
+    if (globalTxHash) {
+        await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
+        
+        await sendTelegramNotification(
+          `🚨 *MASOMIND AGENT EXCEPTION CRASH*\n` +
+          `============================\n` +
+          `🏢 *Failed Layer:* Audit Generation Process\n` +
+          `👤 *Target User Account:* \`${cachedUserAddress || 'Unresolved/Unknown Address'}\`\n` +
+          `💰 *Captured Funds:* ${cachedTokenInfo.amount} ${cachedTokenInfo.symbol}\n` +
+          `⛓️ *Inbound Request Hash:* \`${globalTxHash}\`\n` +
+          `💥 *Critical System Error:* \`${error.message}\`\n` +
+          `💸 *Refund Path Status:* Open. Row logged securely. User can clear client dashboard and click 'Request Refund'.`
+        );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
