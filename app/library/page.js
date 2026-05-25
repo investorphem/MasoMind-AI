@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock, FileText, Image as ImageIcon, Music, Video, Download, Trash2, Code, Loader2, XCircle, PlayCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Clock, FileText, Image as ImageIcon, Music, Video, Download, Trash2, Code, Loader2, XCircle, PlayCircle, AlertCircle, CheckCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAccount } from 'wagmi';
 
@@ -12,6 +12,14 @@ export default function LibraryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  
+  // 🚀 Premium Toast Notification System Hooks Configuration
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3500);
+  };
 
   useEffect(() => {
     if (!address) {
@@ -60,10 +68,11 @@ export default function LibraryPage() {
     setItems(prev => prev.filter(item => item.id !== id));
     const deletedIds = JSON.parse(localStorage.getItem('masomind_deleted_assets') || '[]');
     localStorage.setItem('masomind_deleted_assets', JSON.stringify([...deletedIds, id]));
+    showToast("Asset successfully removed from local dashboard.", "success");
     if (selectedAsset?.id === id) setSelectedAsset(null);
   };
 
-    // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
+  // 🚀 SERVER-PROXY HIDDEN FORM FIX (Bypasses MiniPay Restrictions)
   const downloadAsset = async (item) => {
     try {
       if (item.type === 'AUDIT') {
@@ -71,7 +80,7 @@ export default function LibraryPage() {
           await navigator.share({ title: 'MasoMind Security Audit', text: item.data });
         } else {
           navigator.clipboard.writeText(item.data);
-          alert("Audit copied to clipboard!");
+          showToast("Audit report summary copied to clipboard!", "success");
         }
         return;
       }
@@ -94,13 +103,14 @@ export default function LibraryPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+        showToast("Image asset download started.", "success");
         return;
       }
 
       // 🚀 THE FIX FOR LIBRARY MEDIA DOWNLOADS
       if (item.data.startsWith('http')) {
         window.location.href = `/api/download?url=${encodeURIComponent(item.data)}&action=download`;
+        showToast("Media file download initializing...", "success");
         return;
       }
 
@@ -124,10 +134,11 @@ export default function LibraryPage() {
       document.body.appendChild(form);
       form.submit(); // Forces native mobile download via server headers
       document.body.removeChild(form);
+      showToast("Download stream package dispatched.", "success");
 
     } catch (err) {
       console.error("Download action failed:", err);
-      alert("Failed to initiate download.");
+      showToast("Failed to process download layout pipeline.", "error");
     }
   };
 
@@ -139,7 +150,23 @@ export default function LibraryPage() {
   const documentItems = items.filter(i => i.category === 'DOCUMENT');
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b]">
+    <div className="flex flex-col min-h-screen bg-[#09090b] text-zinc-100 font-sans p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b] relative">
+
+      {/* 🚀 PREMIUM GLASSMORPHIC TOAST CONSOLE WRAPPER MODULE */}
+      {toast.visible && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-11/12 max-w-xs animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-xl bg-zinc-950/90 ${
+            toast.type === 'success' ? 'border-emerald-500/30 text-emerald-400 shadow-emerald-950/20' : 'border-red-500/30 text-red-400 shadow-red-950/20'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle className="w-4 h-4 flex-shrink-0 animate-pulse" />
+            ) : (
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            )}
+            <p className="text-[11px] font-mono font-bold tracking-wide leading-relaxed">{toast.message}</p>
+          </div>
+        </div>
+      )}
 
       <header className="flex items-center justify-between py-4 mb-2 border-b border-white/5 pb-4 max-w-md mx-auto w-full">
         <Link href="/" className="flex items-center gap-2 p-2 bg-zinc-900/80 rounded-full border border-zinc-800 hover:bg-zinc-800 transition-colors">
@@ -174,7 +201,7 @@ export default function LibraryPage() {
             <button 
               key={filter}
               onClick={() => setMediaFilter(filter)}
-              className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wider whitespace-nowrap transition-all border ${mediaFilter === filter ? 'bg-zinc-800 text-zinc-100 border-zinc-700' : 'bg-transparent text-zinc-500 border-zinc-800/50 hover:bg-zinc-900'}`}
+              className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wider whitespace-nowrap transition-all border ${mediaFilter === filter ? 'bg-zinc-800 text-zinc-100 border-zinc-700' : 'bg-transparent text-zinc-500 border-zinc-800/50 border-zinc-800/50 hover:bg-zinc-900'}`}
             >
               {filter}
             </button>
@@ -217,7 +244,7 @@ export default function LibraryPage() {
                       {item.type}
                     </div>
 
-                                        {item.type === 'IMAGE' && (
+                    {item.type === 'IMAGE' && (
                       <img 
                         src={item.data} 
                         className="w-full h-full object-cover" 
@@ -306,7 +333,7 @@ export default function LibraryPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col items-center justify-center min-h-[300px] bg-zinc-950/50">
-                            {selectedAsset.type === 'IMAGE' && (
+              {selectedAsset.type === 'IMAGE' && (
                 <img 
                   src={selectedAsset.data} 
                   alt="Expanded Asset" 
