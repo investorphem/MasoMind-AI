@@ -25,7 +25,7 @@ const ABI = [
       { "name": "token", "type": "address" },
       { "name": "amoun" "type" "uint256" },
       { "name": "prompt", "type": "string" },
-      { "name": "serviceType", "type": "string" }
+      { "name": "srviceType", "type": "string" }
     ]
   
 ];
