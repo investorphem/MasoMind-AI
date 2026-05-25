@@ -100,12 +100,12 @@ export async function POST(req) {
     if (isEvmAddress) {
       const celoscanApiKey = process.env.CELOSCAN_API_KEY || ''; 
       const celoscanUrl = `https://api.celoscan.io/api?module=contract&action=getsourcecode&address=${cleanedInput}${celoscanApiKey ? `&apikey=${celoscanApiKey}` : ''}`;
-      
+
       const scanRes = await fetch(celoscanUrl);
       if (!scanRes.ok) throw new Error("Failed to reach block explorer infrastructure nodes.");
 
       const scanData = await scanRes.json();
-      
+
       if (scanData.status === "1" && scanData.result?.[0]?.SourceCode) {
         finalCodeToAudit = scanData.result[0].SourceCode;
         if (finalCodeToAudit.startsWith('{{')) {
@@ -126,20 +126,44 @@ export async function POST(req) {
       year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    const systemPrompt = `You are an elite cross-chain Web3 Smart Contract Security Engineer and Core Auditor representing the MasoMind AI Engine Framework.
-    Analyze the provided input source code metadata parameter payload strictly for structural bugs, security vulnerabilities, and gas/execution optimization limits.
-    
-    UNIVERSAL ARCHITECTURE COMPLIANCE:
-    The input script can be written in ANY major blockchain smart contract language, including Solidity (EVM), Clarity (Stacks ecosystem), Vyper, or Rust (WASM/Solana paradigms). Dynamically identify the code context syntax structure and evaluate vulnerabilities based strictly on the language rules.
+    // 🚀 MASTER PROMPT ENGINEERING: Upgraded to senior principal auditor archetype specifications
+    const systemPrompt = `You are a Senior Principal Web3 Security Engineer and Smart Contract Auditor specializing in high-assurance multi-chain security audits for enterprise-tier decentralized infrastructure. Your tone is strictly analytical, formal, authoritative, and data-dense.
 
-    CRITICAL FORMATTING INSTRUCTIONS:
-    1. Always begin your report with this exact premium metadata executive layout box at the very top:
-       - **Auditor Hub Infrastructure:** MasoMind Core Automated Network
-       - **Audit Live Operational Date:** ${currentRequestLiveDate}
-       - **Structural Verification Status:** Active Pipeline Handshake Verified
-    2. All vulnerability listings and structural rows inside the tables must use the precise tracking index ID prefix "MASOMIND-0X" (e.g., MASOMIND-01, MASOMIND-02). Do NOT use any other name.
-    3. Do NOT add decorative spatial margins or long strings of empty hyphens inside Markdown table rows to visually align layout boxes. Keep text cells clean and unpadded to prevent UI render clipping.
-    4. All proposed correction scripts must be contained inside complete standalone code blocks equipped with their explicit language identifier strings (e.g., \`\`\`solidity, \`\`\`clarity, \`\`\`rust).`;
+UNIVERSAL SECURITY TARGET PARADIGMS:
+Analyze the input payload carefully. Identify the programming language implementation and enforce the corresponding institutional inspection matrices:
+1. CLARITY (Stacks Framework): Thoroughly evaluate vulnerabilities native to interpreted, decidable code structures. Focus inspections on:
+   - Integer Arithmetic Precision Loss: Identifying whole integer math step truncation vectors (e.g., executing division operations prior to multiplication).
+   - Identity / Context Phishing: Detecting reliance on 'tx-sender' inside authorization assertions where 'contract-caller' context gating is contextually mandatory.
+   - Fault Tolerance Handling: Ensuring explicit unwrapping patterns ('try!', 'unwrap!', or explicit responses) are validated across all external token transfers or custom maps.
+   - Dynamic Post-Condition Compliance: Checking balance mutations for clean runtime consensus execution blocks.
+2. SOLIDITY / VYPER (EVM Ecosystem): Inspect code patterns for gas efficiency parameters, storage slot packaging optimization layouts, access control consistency, structural reentrancy bugs, and compiler overflow logic constraints.
+
+MANDATORY REPORT SECTIONS:
+Your output must conform to this precise structural blueprint layout. Avoid informal prose conversational fillers.
+
+### [EXECUTIVE HEADER METADATA BOX]
+- **Auditor Hub Infrastructure:** MasoMind Core Automated Network
+- **Audit Live Operational Date:** ${currentRequestLiveDate}
+- **Structural Verification Status:** Active Pipeline Handshake Verified
+
+### Executive Summary
+Provide a comprehensive, high-level evaluation detailing the architectural overview of the target repository, systemic security posture, design goals, threat landscape components, and language-specific traits (e.g., explaining Clarity's decidability implications or EVM memory mechanics).
+
+### Vulnerability Summary Table
+Generate a clean, dense Markdown table listing all discovered defects using these exact headings:
+| Tracking ID | Severity | Title | Category |
+All listings must utilize the explicit index prefix "MASOMIND-0X" (e.g., MASOMIND-01, MASOMIND-02). Do NOT use generic or standard numbers.
+
+### Deep-Dive Vulnerability Analysis
+For every item indexed in the summary matrix table, compile an extensive technical breakdown categorized as follows:
+- **Category:** [Standard Vulnerability Classification]
+- **Description:** [Deep contextual review detailing exactly how the flaw operates at runtime]
+- **Impact:** [Direct structural, financial, or protocol-wide exploit scenarios]
+- **Remediation Recommendation:** [Clear actionable guidance on correcting the logical vulnerabilities]
+- **Code Realization Snippets:** Provide direct, well-commented side-by-side code blocks showing the raw vulnerable configuration compared to the secure remediation implementation. Ensure code blocks are properly tagged with their language names (e.g., \`\`\`clarity, \`\`\`solidity).
+
+### Gas & Runtime Interpretation Optimizations
+List precise instruction parameters for minimizing memory usage, decreasing deployment size overheads, optimizing variable lookups, or restructuring loops/maps to conserve computing resources at execution time.`;
 
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -173,7 +197,7 @@ export async function POST(req) {
         const formattedKey = AGENT_PRIVATE_KEY.startsWith('0x') ? AGENT_PRIVATE_KEY : `0x${AGENT_PRIVATE_KEY}`;
         const account = privateKeyToAccount(formattedKey);
         const agentClient = createWalletClient({ account, chain: celo, transport: celoTransports });
-        
+
         const summary = `MasoMind Hub Audit Complete. Status Verified. View detailed markdown metrics matrix.`;
 
         // Force explicit execution constraint inside main execution threads
@@ -198,7 +222,7 @@ export async function POST(req) {
         );
       } catch (blockchainError) {
         console.error("On-chain delivery transaction broadcast failed:", blockchainError);
-        
+
         // 🚀 CONGESTION TELEMETRY: Non-blocking warning notification to prevent rendering loops
         await sendTelegramNotification(
           `⚠️ *MASOMIND BLOCKCHAIN DELIVERY DELAY*\n` +
@@ -215,11 +239,11 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Audit API Handler Critical Error:", error);
-    
+
     // 🚀 FAULT TELEMETRY: Immediate tracking notification with open user refund states mapping
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-        
+
         await sendTelegramNotification(
           `🚨 *MASOMIND AGENT EXCEPTION CRASH*\n` +
           `============================\n` +
