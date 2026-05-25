@@ -1,10 +1,10 @@
 'use client';
+import { useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { celo } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Initialize a local fallback config for the admin sub-tree path
 const config = createConfig({
   chains: [celo],
   connectors: [injected()],
@@ -13,9 +13,10 @@ const config = createConfig({
   },
 });
 
-const queryClient = new Client ? new QueryClient() : new QueryClient();
-
 export default function AdminLayout({ children }) {
+  // 🚀 FIXED: Using lazy state initialization prevents SSR compilation crashes
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
