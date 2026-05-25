@@ -5,7 +5,6 @@ import { RefreshCw, Send, ShieldAlert, Lock, Loader2, CheckCircle, AlertCircle }
 import { useAccount, useWriteContract, useConnect } from 'wagmi';
 import { parseUnits } from 'viem';
 
-// Ensure exact lowercase comparison mapping match profiles
 const ADMIN_WALLET = '0xec24bafbc989a9be5f6f0ead8848753b5e4ae0b6'.toLowerCase();
 
 const TOKEN_CONFIG = {
@@ -19,7 +18,6 @@ export default function AdminRefunds() {
   const { writeContractAsync } = useWriteContract();
   const { connect, connectors } = useConnect();
 
-  // Core Functional States
   const [mounted, setMounted] = useState(false);
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +29,6 @@ export default function AdminRefunds() {
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
   };
 
-  // 🚀 CRITICAL FIX: Enforce Hydration Shield boundary to prevent blank render crashes
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -48,7 +45,7 @@ export default function AdminRefunds() {
       if (error) throw error;
       setRefunds(data || []);
     } catch (err) {
-      console.error("Supabase Query Error Exception:", err);
+      console.error("Supabase Error:", err);
       showToast("Failed to fetch pending ledger settlements.", "error");
     } finally {
       setLoading(false);
@@ -69,19 +66,19 @@ export default function AdminRefunds() {
   const handleConnectAdmin = () => {
     try {
       if (!connectors || connectors.length === 0) {
-        showToast("No active wallet provider interfaces detected.", "error");
+        showToast("No wallet extensions detected.", "error");
         return;
       }
       const connector = connectors.find(c => c.id === 'injected') || connectors[0];
       connect({ connector });
     } catch (err) {
-      showToast("Wallet handshake initialization failed.", "error");
+      showToast("Wallet connection failed.", "error");
     }
   };
 
   const processRefund = async (tx) => {
     if (!tx.user_address || !tx.token_address) {
-      showToast("Missing destination attributes inside ledger record row.", "error");
+      showToast("Missing destination parameters in database row.", "error");
       return;
     }
     setProcessingId(tx.tx_hash);
@@ -89,7 +86,7 @@ export default function AdminRefunds() {
     try {
       const tokenAddr = tx.token_address.toLowerCase();
       const config = TOKEN_CONFIG[tokenAddr];
-      if (!config) throw new Error("Unsupported operational token specification template");
+      if (!config) throw new Error("Unsupported token specification");
 
       const priceStr = getRefundAmount(tx.service_type);
       const amountToRefund = parseUnits(priceStr, config.decimals);
@@ -105,17 +102,16 @@ export default function AdminRefunds() {
         .update({ status: 'REFUNDED', refund_tx: refundHash })
         .eq('tx_hash', tx.tx_hash);
 
-      showToast(`Settlement refund transaction successfully broadcasted!`, "success");
+      showToast(`Refund successfully broadcasted!`, "success");
       fetchRefunds();
     } catch (err) {
-      console.error("Treasury settlement refund allocation failure:", err);
-      showToast("Execution reverted. Inspect account balances.", "error");
+      console.error("Refund failed:", err);
+      showToast("Execution failed. Verify your balance layer.", "error");
     } finally {
       setProcessingId(null);
     }
   };
 
-  // Render a clean fullscreen background spinner during preliminary mount ticks
   if (!mounted) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-100">
@@ -124,7 +120,6 @@ export default function AdminRefunds() {
     );
   }
 
-  // Restricted Dashboard Context Frame Guard Configuration
   if (!isConnected || address?.toLowerCase() !== ADMIN_WALLET) {
     return (
       <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-100 p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-950/20 via-[#09090b] to-[#09090b] relative">
@@ -139,8 +134,8 @@ export default function AdminRefunds() {
         )}
 
         <Lock className="w-12 h-12 text-red-500/80 mb-4 animate-pulse" />
-        <h2 className="text-sm font-bold tracking-widest text-red-400 mb-2 uppercase font-mono">Restricted Node Gateway</h2>
-        <p className="text-xs text-zinc-500 max-w-[250px] text-center leading-relaxed mb-6 font-sans">Administrative authorization credentials required to manage asset recovery settlement vaults.</p>
+        <h2 className="text-sm font-bold tracking-widest text-red-400 mb-2 uppercase font-mono">Restricted Access Gateway</h2>
+        <p className="text-xs text-zinc-500 max-w-[250px] text-center leading-relaxed mb-6">Administrative connection required to manage asset recovery settlement vaults.</p>
         
         <button 
           onClick={handleConnectAdmin}
@@ -173,7 +168,7 @@ export default function AdminRefunds() {
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-md font-bold tracking-wider font-sans text-white uppercase">Treasury Settlement Desk</h1>
+              <h1 className="text-md font-bold tracking-wider text-white uppercase">Treasury Settlement Desk</h1>
               <p className="text-[10px] text-zinc-500 font-mono">Node ID: {address.substring(0, 6)}...{address.substring(address.length - 4)}</p>
             </div>
           </div>
