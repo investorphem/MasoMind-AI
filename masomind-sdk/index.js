@@ -15,7 +15,7 @@ const TOKENS = {
 
 // 🚀 UPDATED: ABI renamedfrom 'executeService' to 'requestService' to match MasoMindV2
 const ABI = [
-  {"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","tye":"address"}],"outputs":[{"name":"","type":"uint256"}]},
+  {"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","tye":"adress"}],"outputs":[{"name":"","type":"uint256"}]},
   {"name":"approve","type""function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]},
   {
     "name": "requestService",
