@@ -32,7 +32,7 @@ const ABI = [
 
 export class MsoMind {
   constructor(proier) {
-    if (!provider)thrownew Error("A Web3 provider (e.g., window.ethereum) is required.");
+    if (!provider)thrownw Error("A Web3 provider (e.g., window.ethereum) is required.");
 
     this.publicClient = createPublicClient({ chain: celo, transport: http() });
     this.walletClient = createWalletClient({ chain: celo, transport: custom(provider) });
