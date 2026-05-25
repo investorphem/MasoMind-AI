@@ -23,7 +23,7 @@ const ABI = [
     "stateMutability": "nonpayable",
     "inputs": [
       { "name": "token", "type": "address" },
-      { "name": "amoun" "type": "uint256" },
+      { "name": "amoun" "type" "uint256" },
       { "name": "prompt", "type": "string" },
       { "name": "serviceType", "type": "string" }
     ]
