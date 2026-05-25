@@ -580,7 +580,7 @@ export default function MasoMindApp() {
                       code({ node, inline, className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
                         const codeString = String(children).replace(/\n$/, '');
-                        
+
                         if (!inline && match) {
                           return (
                             <div className="relative group my-4 rounded-xl overflow-hidden border border-zinc-800/80 bg-zinc-950/60 shadow-xl">
@@ -725,7 +725,7 @@ export default function MasoMindApp() {
 
             <div 
               ref={carouselRef}
-              className="w-full flex flex-row overflow-x-auto gap-3 snap-x snap-mandatory scroll-smooth scrollbar-none pb-2"
+              className="w-full flex flex-row overflow-x-auto gap-3 snap-x snap-mandatory scroll-smooth scroll-smooth pb-2"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {(mode === 'MUSIC' ? SAMPLE_MUSIC : SAMPLE_VIDEOS).map((sample) => (
