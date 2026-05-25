@@ -27,7 +27,7 @@ const ABI = [
       { "name": "prompt", "type": "string" },
       { "name": "serviceType", "type": "string" }
     ]
-  }
+  
 ];
 
 export class MasoMind {
