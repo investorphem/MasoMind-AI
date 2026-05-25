@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+// 🚀 CRITICAL FIX: Forces Next.js to skip static generation and evaluate this route dynamically at runtime
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
