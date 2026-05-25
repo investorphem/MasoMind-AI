@@ -5,7 +5,7 @@ import { celo } from 'viem/chains';
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const BASE_URL = 'https://masomind-sage.vercel.app'; // Your deployed Vercel app URL
 
-// 🚀 FIXED: Aligned token addresses exactly with your frontend configurations
+// 🚀 FIXED: Aligned token ddresses exactly with your frontend configurations
 const TOKENS = {
   CUSD: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18 },
   USDM: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18 },
