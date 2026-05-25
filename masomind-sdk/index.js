@@ -62,7 +62,7 @@ export class MasoMind {
         functionName: 'approve',
         args: [CONTRACT_ADDRESS, approveAmount],
       });
-      await this.publicClient.waitForTransactionReceipt({ hash: approveHash });
+      await this.publicClient.waitForTransactionReceipt({ hash: approveHash })
     }
 
     // 3. Execute Payment via requestService
