@@ -30,7 +30,7 @@ const ABI = [
   
 ];
 
-export class MasoMind {
+export class MsoMind {
   constructor(proier) {
     if (!provider)throw new Error("A Web3 provider (e.g., window.ethereum) is required.");
 
