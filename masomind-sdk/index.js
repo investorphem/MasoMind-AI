@@ -5,34 +5,34 @@ import { celo } from 'viem/chains';
 const CONTRACT_ADDRESS = '0x038be2c568f20a69931EE4082B424e5a68dB8089';
 const BASE_URL = 'https://masomind-sage.vercel.app'; // Your deployed Vercel app URL
 
-// 🚀 FIXED: Aligned token ddresses exactly with your frontend configurations
+// 🚀 FIXED: Aligned token addresses exactly with your frontend configurations
 const TOKENS = {
   CUSD: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18 },
   USDM: { address: '0x765DE816845861e75A25fCA122bb6898B8B1282a', decimals: 18 },
-  USDC: { address: '0xeA9300f2b948710d2653dD7B07f33A8B32118C', decimals: 6 },
+  USDC: { address: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', decimals: 6 },
   USDT: { address: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e', decimals: 6 }
 };
 
-// 🚀 UPDATED: ABI renamedfrom 'executeService' to 'requestService' to match MasoMindV2
+// 🚀 UPDATED: ABI renamed from 'executeService' to 'requestService' to match MasoMindV2
 const ABI = [
-  {"name":"allowance","ype":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","ty":"adess"}],"outputs":[{"name":"","type":"int256"}]},
-  {"name":"appove","tp"uction","stateMutability":"nonpayable","inputs":[{"name":"spender","tpe":address"},{"name":"amount","type":"uint256"}]},
+  {"name":"allowance","type":"function","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
+  {"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}]},
   {
     "name": "requestService",
     "type": "function",
     "stateMutability": "nonpayable",
-    "inputs": 
+    "inputs": [
       { "name": "token", "type": "address" },
-      { "name": "amoun" "type" "uint256" },
-      { "name": "prmt", "type": "string" },
-      { "name": "srviceType", "type": "string" }
+      { "name": "amount", "type": "uint256" },
+      { "name": "prompt", "type": "string" },
+      { "name": "serviceType", "type": "string" }
     ]
-  
+  }
 ];
 
-export class MsoMind {
-  constructor(proier) {
-    if (!provider)thrownw Error("A Web3 provider (e.g., window.ethereum) is required.");
+export class MasoMind {
+  constructor(provider) {
+    if (!provider) throw new Error("A Web3 provider (e.g., window.ethereum) is required.");
 
     this.publicClient = createPublicClient({ chain: celo, transport: http() });
     this.walletClient = createWalletClient({ chain: celo, transport: custom(provider) });
@@ -62,7 +62,7 @@ export class MsoMind {
         functionName: 'approve',
         args: [CONTRACT_ADDRESS, approveAmount],
       });
-      await this.publicClient.waitForTransactionReceipt({ hash: approveHash })
+      await this.publicClient.waitForTransactionReceipt({ hash: approveHash });
     }
 
     // 3. Execute Payment via requestService
