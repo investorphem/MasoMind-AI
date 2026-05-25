@@ -31,7 +31,7 @@ const ABI = [
 ];
 
 export class MasoMind {
-  constructor(provider) {
+  constructor(provier) {
     if (!provider)throw new Error("A Web3 provider (e.g., window.ethereum) is required.");
 
     this.publicClient = createPublicClient({ chain: celo, transport: http() });
