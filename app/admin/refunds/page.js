@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { RefreshCw, Send, ShieldAlert, Lock } from 'lucide-react';
+import { RefreshCw, Send, ShieldAlert, Lock, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAccount, useWriteContract, useConnect } from 'wagmi';
 import { parseUnits } from 'viem';
 
+// Ensure exact lowercase comparison mapping match profiles
 const ADMIN_WALLET = '0xec24bafbc989a9be5f6f0ead8848753b5e4ae0b6'.toLowerCase();
 
 const TOKEN_CONFIG = {
@@ -18,9 +19,22 @@ export default function AdminRefunds() {
   const { writeContractAsync } = useWriteContract();
   const { connect, connectors } = useConnect();
 
+  // Core Functional States
+  const [mounted, setMounted] = useState(false);
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
+  };
+
+  // 🚀 CRITICAL FIX: Enforce Hydration Shield boundary to prevent blank render crashes
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchRefunds = async () => {
     setLoading(true);
@@ -34,26 +48,40 @@ export default function AdminRefunds() {
       if (error) throw error;
       setRefunds(data || []);
     } catch (err) {
-      console.error("Supabase Error:", err);
+      console.error("Supabase Query Error Exception:", err);
+      showToast("Failed to fetch pending ledger settlements.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { 
-    if (isConnected && address?.toLowerCase() === ADMIN_WALLET) {
+    if (mounted && isConnected && address?.toLowerCase() === ADMIN_WALLET) {
       fetchRefunds(); 
     }
-  }, [address, isConnected]);
+  }, [address, isConnected, mounted]);
 
   const getRefundAmount = (serviceType) => {
     const prices = { 'IMAGE': '0.10', 'AUDIT': '0.05', 'MUSIC': '0.50', 'VIDEO': '1.00' };
     return prices[serviceType] || '0.00';
   };
 
+  const handleConnectAdmin = () => {
+    try {
+      if (!connectors || connectors.length === 0) {
+        showToast("No active wallet provider interfaces detected.", "error");
+        return;
+      }
+      const connector = connectors.find(c => c.id === 'injected') || connectors[0];
+      connect({ connector });
+    } catch (err) {
+      showToast("Wallet handshake initialization failed.", "error");
+    }
+  };
+
   const processRefund = async (tx) => {
     if (!tx.user_address || !tx.token_address) {
-      alert("Missing refund details in database.");
+      showToast("Missing destination attributes inside ledger record row.", "error");
       return;
     }
     setProcessingId(tx.tx_hash);
@@ -61,9 +89,10 @@ export default function AdminRefunds() {
     try {
       const tokenAddr = tx.token_address.toLowerCase();
       const config = TOKEN_CONFIG[tokenAddr];
-      if (!config) throw new Error("Unknown Token");
+      if (!config) throw new Error("Unsupported operational token specification template");
 
-      const amountToRefund = parseUnits(getRefundAmount(tx.service_type), config.decimals);
+      const priceStr = getRefundAmount(tx.service_type);
+      const amountToRefund = parseUnits(priceStr, config.decimals);
 
       const refundHash = await writeContractAsync({
         address: tx.token_address,
@@ -76,74 +105,129 @@ export default function AdminRefunds() {
         .update({ status: 'REFUNDED', refund_tx: refundHash })
         .eq('tx_hash', tx.tx_hash);
 
+      showToast(`Settlement refund transaction successfully broadcasted!`, "success");
       fetchRefunds();
     } catch (err) {
-      console.error("Refund failed:", err);
-      alert("Transaction failed. Check your admin wallet balance.");
+      console.error("Treasury settlement refund allocation failure:", err);
+      showToast("Execution reverted. Inspect account balances.", "error");
     } finally {
       setProcessingId(null);
     }
   };
 
+  // Render a clean fullscreen background spinner during preliminary mount ticks
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-100">
+        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+      </div>
+    );
+  }
+
+  // Restricted Dashboard Context Frame Guard Configuration
   if (!isConnected || address?.toLowerCase() !== ADMIN_WALLET) {
     return (
-      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-100 p-4">
-        <Lock className="w-12 h-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-bold tracking-widest text-red-400 mb-6">RESTRICTED AREA</h2>
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-100 p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-950/20 via-[#09090b] to-[#09090b] relative">
+        
+        {toast.visible && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-11/12 max-w-xs animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-zinc-950/90 border-red-500/30 text-red-400 shadow-2xl backdrop-blur-xl">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <p className="text-[11px] font-mono font-bold tracking-wide">{toast.message}</p>
+            </div>
+          </div>
+        )}
+
+        <Lock className="w-12 h-12 text-red-500/80 mb-4 animate-pulse" />
+        <h2 className="text-sm font-bold tracking-widest text-red-400 mb-2 uppercase font-mono">Restricted Node Gateway</h2>
+        <p className="text-xs text-zinc-500 max-w-[250px] text-center leading-relaxed mb-6 font-sans">Administrative authorization credentials required to manage asset recovery settlement vaults.</p>
+        
         <button 
-          onClick={() => {
-            const connector = connectors.find(c => c.id === 'injected') || connectors[0];
-            connect({ connector });
-          }}
-          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+          onClick={handleConnectAdmin}
+          className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono font-bold text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] tracking-wider uppercase"
         >
-          Connect Admin Wallet
+          Connect Admin Signer
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-emerald-500" />
-            <h1 className="text-2xl font-bold tracking-tight">Treasury Settlement</h1>
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 p-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/10 via-[#09090b] to-[#09090b] relative">
+      
+      {toast.visible && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-11/12 max-w-xs animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-xl bg-zinc-950/90 ${
+            toast.type === 'success' ? 'border-emerald-500/30 text-emerald-400' : 'border-red-500/30 text-red-400'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+            <p className="text-[11px] font-mono font-bold tracking-wide">{toast.message}</p>
           </div>
-          <button onClick={fetchRefunds} className="p-2 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <RefreshCw className={`w-5 h-5 text-zinc-400 ${loading ? 'animate-spin' : ''}`} />
+        </div>
+      )}
+
+      <div className="max-w-3xl mx-auto space-y-6 pt-4">
+        <div className="flex justify-between items-center border-b border-white/5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-md font-bold tracking-wider font-sans text-white uppercase">Treasury Settlement Desk</h1>
+              <p className="text-[10px] text-zinc-500 font-mono">Node ID: {address.substring(0, 6)}...{address.substring(address.length - 4)}</p>
+            </div>
+          </div>
+          <button onClick={fetchRefunds} disabled={loading} className="p-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl hover:bg-zinc-800 transition-colors disabled:opacity-40">
+            <RefreshCw className={`w-4 h-4 text-zinc-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-950 text-[10px] text-zinc-500 tracking-widest uppercase">
+        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-zinc-950/80 border-b border-zinc-800/80 text-[10px] text-zinc-500 tracking-widest uppercase font-mono">
               <tr>
-                <th className="p-5">User</th>
-                <th className="p-5">Service</th>
-                <th className="p-5">Asset</th>
-                <th className="p-5 text-right">Action</th>
+                <th className="p-4 font-bold">Recipient Client</th>
+                <th className="p-4 font-bold">Service Target</th>
+                <th className="p-4 font-bold">Token Asset</th>
+                <th className="p-4 font-bold text-right">Action Vector</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {refunds.map(tx => (
-                <tr key={tx.tx_hash} className="hover:bg-zinc-800/30">
-                  <td className="p-5 font-mono text-emerald-500 text-xs">{tx.user_address.substring(0,6)}...</td>
-                  <td className="p-5 font-bold text-xs">{tx.service_type}</td>
-                  <td className="p-5 text-amber-500 text-xs">{TOKEN_CONFIG[tx.token_address?.toLowerCase()]?.symbol || 'Unknown'}</td>
-                  <td className="p-5 text-right">
-                    <button 
-                      onClick={() => processRefund(tx)}
-                      disabled={processingId === tx.tx_hash}
-                      className="px-4 py-2 bg-emerald-600 rounded-lg font-bold text-[10px] flex items-center gap-2 ml-auto"
-                    >
-                      {processingId === tx.tx_hash ? '...' : <Send className="w-3 h-3" />}
-                      REFUND
-                    </button>
+            <tbody className="divide-y divide-zinc-800/50 font-sans text-zinc-300">
+              {refunds.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-12 text-center text-zinc-500 font-medium font-mono text-[11px] tracking-wide bg-zinc-950/10">
+                    No pending treasury escrow refunds found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                refunds.map(tx => {
+                  const safeUserAddress = tx.user_address || '';
+                  const safeTokenAddress = tx.token_address?.toLowerCase() || '';
+                  return (
+                    <tr key={tx.tx_hash} className="hover:bg-zinc-800/20 transition-colors">
+                      <td className="p-4 font-mono text-emerald-400 font-bold">
+                        {safeUserAddress ? `${safeUserAddress.substring(0, 6)}...${safeUserAddress.substring(safeUserAddress.length - 4)}` : '0xUnknown'}
+                      </td>
+                      <td className="p-4 font-bold text-zinc-200 tracking-wide text-[11px]">{tx.service_type || 'UNDEFINED'}</td>
+                      <td className="p-4 font-mono font-bold text-amber-500">{TOKEN_CONFIG[safeTokenAddress]?.symbol || 'Unknown'}</td>
+                      <td className="p-4 text-right">
+                        <button 
+                          onClick={() => processRefund(tx)}
+                          disabled={processingId === tx.tx_hash}
+                          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl font-mono font-bold text-[10px] tracking-wider uppercase transition-all disabled:opacity-30 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-center gap-1.5 ml-auto"
+                        >
+                          {processingId === tx.tx_hash ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Send className="w-3 h-3" />
+                          )}
+                          Settle ({getRefundAmount(tx.service_type)})
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
