@@ -46,7 +46,7 @@ const DELIVERY_ABI = [{
   ]
 }];
 
-// 🎯 HIGH-COMPATIBILITY VECTORS (Stream smoothly across mobile webviews and browsers)
+// 🎯 HIGH-COMPATIBILITY VECTORS
 const PREMIUM_LOOPS = {
   synthwave: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
   lofi: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
@@ -61,8 +61,41 @@ export async function POST(req) {
   let cachedTokenInfo = { symbol: 'Unknown', amount: '0.00' };
 
   try {
-    const { prompt, txHash } = await req.json();
-    if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { prompt, txHash } = body;
+
+    if (!prompt) return NextResponse.json({ error: "Missing parameters: 'prompt' is required." }, { status: 400 });
+
+    // 🛡️ 🚀 THE x402 PROGRAMMATIC AGENT GATEWAY CHALLENGE
+    if (!txHash) {
+      const defaultTokenAddress = '0x765de816845861e75a25fca122bb6898b8b1282a'; // cUSD / USDm
+      const exactCostString = "0.50"; // Music generation cost
+      const tokenConfig = TOKENS[defaultTokenAddress];
+
+      return NextResponse.json(
+        {
+          error: "HTTP 402 Payment Required: MasoMind Music Studio clearance requires on-chain payment proof.",
+          paymentDetails: {
+            chain: "celo",
+            chainId: 42220,
+            assetType: "ERC20",
+            assetAddress: defaultTokenAddress,
+            amount: parseUnits(exactCostString, tokenConfig.decimals).toString(),
+            humanAmount: exactCostString,
+            symbol: tokenConfig.symbol,
+            destination: CONTRACT_ADDRESS,
+            instruction: "Invoke requestService(token, amount, prompt, serviceType) on the target contract, then attach the resulting 'txHash' to your request body payload context strings."
+          }
+        },
+        { 
+          status: 402, 
+          headers: {
+            'X-X402-Payment-Required': `ERC20:${defaultTokenAddress}:${exactCostString}`,
+            'X-X402-Destination': CONTRACT_ADDRESS
+          }
+        }
+      );
+    }
 
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
@@ -131,7 +164,6 @@ export async function POST(req) {
 
         const summaryMsg = `Vocal Track Complete. Compilation Reference URL: ${mediaUrl.substring(0, 45)}...`;
 
-        // Force sequence block halt until transaction receipt returns safely from the RPC node
         const deliveryTxHash = await agentClient.writeContract({
           account,
           address: CONTRACT_ADDRESS,
@@ -140,9 +172,6 @@ export async function POST(req) {
           args: [cachedUserAddress, summaryMsg]
         });
 
-        console.log(`On-chain audio asset delivery receipt broadcast confirmed: ${deliveryTxHash}`);
-        
-        // 🚀 SUCCESS TELEMETRY: Automated notification block broadcast
         await sendTelegramNotification(
           `✅ *MASOMIND EXECUTION SUCCESS*\n` +
           `============================\n` +
@@ -155,8 +184,6 @@ export async function POST(req) {
         );
       } catch (blockchainError) { 
         console.error("On-chain delivery transaction broadcast failed:", blockchainError);
-        
-        // 🚀 CONGESTION TELEMETRY: Non-blocking warning notification to prevent rendering loops
         await sendTelegramNotification(
           `⚠️ *MASOMIND BLOCKCHAIN DELIVERY DELAY*\n` +
           `============================\n` +
@@ -166,20 +193,16 @@ export async function POST(req) {
           `💡 *System Note:* Audio track successfully generated and indexed inside Supabase database tables. Client can stream asset natively, but contract state event callback timed out.`
         );
       }
-    } else {
-      console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
     }
 
-    // 6. Return Clean Fluid Payload Reference
     return NextResponse.json({ mediaUrl });
-    
+
   } catch (error) {
     console.error("Music API Handler Critical Error:", error);
-    
-    // 🚀 FAULT TELEMETRY: Immediate tracking notification with open user refund states mapping
+
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-        
+
         await sendTelegramNotification(
           `🚨 *MASOMIND AGENT EXCEPTION CRASH*\n` +
           `============================\n` +
