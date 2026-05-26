@@ -42,28 +42,28 @@ const PLACEHOLDERS = {
   ]
 };
 
-// 🚀 ENTERPRISE VECTORS (Featuring Real Human Vocalist Singing Hooks & Open Partial Chunk Support)
+// 🚀 ENTERPRISE VECTORS (Featuring Real Human Vocalist Singing Hooks)
 const SAMPLE_MUSIC = [
   {
     id: 'm1',
-    title: 'Vocal Cyber Engine',
-    genre: 'Synth / Human Singing',
-    prompt: 'A premium electronic track featuring an active human vocal melody line and crisp singing hooks blended over an automated Web3 rhythm track.',
-    url: 'https://mdn.github.io/learning-area/html/multimedia-and-embedding/video-and-audio-content/viper.mp3'
+    title: 'Stars and Sun Align',
+    genre: '90s Boom Bap',
+    prompt: 'Knowledge of self, internal struggle, and the grind toward success.',
+    url: 'https://tqyxoadsgoosfjfcuzfd.supabase.co/storage/v1/object/public/vault/stars_and_sun_align.mp3'
   },
   {
     id: 'm2',
-    title: 'The Messenger Rock',
-    genre: 'Rock / Studio Vocals',
-    prompt: 'An alternative track with raw human studio vocals, clear lyrical projection, and driving rhythm sections optimized for application loading audio.',
-    url: 'https://storage.googleapis.com/automotive-media/The_Messenger.mp3'
+    title: 'The Way You Settle',
+    genre: 'Neo-Soul',
+    prompt: 'Intimacy, domestic bliss, and the quiet comfort of a long-term partner.',
+    url: 'https://tqyxoadsgoosfjfcuzfd.supabase.co/storage/v1/object/public/vault/the_way_you_settle.mp3'
   },
   {
     id: 'm3',
-    title: 'Tell Me Your Intent',
-    genre: 'Pop / Human Singing',
-    prompt: 'An immersive upbeat pop studio arrangement featuring layered real human vocals and rich melodic choruses built for premium dApp execution.',
-    url: 'https://storage.googleapis.com/automotive-media/Tell_Me_That_You_Love_Me.mp3'
+    title: 'Steady Anchor',
+    genre: 'Acoustic Soul',
+    prompt: 'Enduring love, finding peace, and the feeling of home in someone else’s presence.',
+    url: 'https://tqyxoadsgoosfjfcuzfd.supabase.co/storage/v1/object/public/vault/the_weight_of_us.mp3'
   }
 ];
 
@@ -91,6 +91,24 @@ const SAMPLE_VIDEOS = [
     url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/people-detection.mp4'
   }
 ];
+
+// 🚀 DURATION HELPER COMPONENT
+const DurationDisplay = ({ url }) => {
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const audio = new Audio(url);
+    audio.onloadedmetadata = () => {
+      setDuration(Math.round(audio.duration));
+    };
+  }, [url]);
+
+  return (
+    <span className="text-[10px] font-mono text-emerald-500/70">
+      {duration > 0 ? `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}` : '...'}
+    </span>
+  );
+};
 
 export default function MasoMindApp() {
   const isMiniPay = useMiniPay();
@@ -314,6 +332,14 @@ export default function MasoMindApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: targetPrompt, txHash: targetHash }) 
       });
+
+      // 🛡️ x402 Gateway Handling
+      if (res.status === 402) {
+        const errorData = await res.json();
+        showToast("Payment required: Gateway challenge triggered.", "error");
+        setStatus("Waiting for on-chain authorization...");
+        return;
+      }
 
       const data = await res.json();
       const generatedContent = data.imageUrl || data.report || data.mediaUrl;
@@ -736,7 +762,10 @@ export default function MasoMindApp() {
                   <div className="flex justify-between items-start">
                     <div className="max-w-[150px] truncate">
                       <h5 className="text-xs font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors truncate">{sample.title}</h5>
-                      <span className="text-[10px] font-mono text-zinc-500 block truncate">{sample.genre}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-zinc-500 block truncate">{sample.genre}</span>
+                        {mode === 'MUSIC' && <DurationDisplay url={sample.url} />}
+                      </div>
                     </div>
                     <div className="flex gap-1.5">
                       <button 
