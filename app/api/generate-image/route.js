@@ -17,9 +17,9 @@ const celoTransports = fallback([
 ]);
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'USDm/cUSD' }, // cUSD / USDm
-  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },      // USDC
-  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }       // USDT
+  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'USDm/cUSD' }, 
+  '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
+  '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }
 };
 
 const REQUEST_ABI = [{
@@ -50,8 +50,41 @@ export async function POST(req) {
   let cachedTokenInfo = { symbol: 'Unknown', amount: '0.00' };
 
   try {
-    const { prompt, txHash } = await req.json();
-    if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { prompt, txHash } = body;
+
+    if (!prompt) return NextResponse.json({ error: "Missing parameters: 'prompt' is required." }, { status: 400 });
+
+    // 🛡️ 🚀 THE x402 PROGRAMMATIC AGENT GATEWAY CHALLENGE
+    if (!txHash) {
+      const defaultTokenAddress = '0x765de816845861e75a25fca122bb6898b8b1282a'; // cUSD / USDm
+      const exactCostString = "0.10"; // Image generation cost
+      const tokenConfig = TOKENS[defaultTokenAddress];
+
+      return NextResponse.json(
+        {
+          error: "HTTP 402 Payment Required: MasoMind Image Engine clearance requires on-chain payment proof.",
+          paymentDetails: {
+            chain: "celo",
+            chainId: 42220,
+            assetType: "ERC20",
+            assetAddress: defaultTokenAddress,
+            amount: parseUnits(exactCostString, tokenConfig.decimals).toString(),
+            humanAmount: exactCostString,
+            symbol: tokenConfig.symbol,
+            destination: CONTRACT_ADDRESS,
+            instruction: "Invoke requestService(token, amount, prompt, serviceType) on the target contract, then attach the resulting 'txHash' to your request body payload context strings."
+          }
+        },
+        { 
+          status: 402, 
+          headers: {
+            'X-X402-Payment-Required': `ERC20:${defaultTokenAddress}:${exactCostString}`,
+            'X-X402-Destination': CONTRACT_ADDRESS
+          }
+        }
+      );
+    }
 
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
@@ -100,7 +133,7 @@ export async function POST(req) {
       }]);
     }
 
-    // 3. MASTER PROMPT ENRICHMENT CORE (Gemini 2.5 Active Infrastructure Integration)
+    // 3. MASTER PROMPT ENRICHMENT CORE
     const togetherApiKey = process.env.TOGETHER_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
@@ -162,7 +195,6 @@ export async function POST(req) {
 
         const summaryMsg = `Canvas Matrix Render Ready. Storage Allocation Reference: ${permanentImageUrl.substring(0, 45)}...`;
 
-        // Force sequence block halt until transaction receipt returns safely
         const deliveryTxHash = await agentClient.writeContract({
           account,
           address: CONTRACT_ADDRESS,
@@ -171,9 +203,6 @@ export async function POST(req) {
           args: [cachedUserAddress, summaryMsg]
         });
 
-        console.log(`On-chain image asset delivery receipt broadcast confirmed: ${deliveryTxHash}`);
-        
-        // 🚀 SUCCESS TELEMETRY: Automated notification block broadcast
         await sendTelegramNotification(
           `✅ *MASOMIND EXECUTION SUCCESS*\n` +
           `============================\n` +
@@ -186,31 +215,25 @@ export async function POST(req) {
         );
       } catch (blockchainError) { 
         console.error("On-chain result delivery transaction broadcast failed:", blockchainError);
-        
-        // 🚀 CONGESTION TELEMETRY: Non-blocking warning notification to prevent page execution loop stalls
         await sendTelegramNotification(
           `⚠️ *MASOMIND BLOCKCHAIN DELIVERY DELAY*\n` +
           `============================\n` +
           `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
           `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
           `❌ *RPC Error Exception:* \`${blockchainError.message.substring(0, 120)}...\`\n` +
-          `💡 *System Note:* Image successfully generated and indexed inside Supabase storage layers. Client can view canvas natively, but contract state event callback timed out.`
+          `💡 *System Note:* Image successfully generated and indexed. Client can view canvas natively, but contract state event callback timed out.`
         );
       }
-    } else {
-      console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
     }
 
-    // 7. Secure Return Response Streaming
     return NextResponse.json({ imageUrl: permanentImageUrl });
 
   } catch (error) {
     console.error("Image API Handler Critical Error:", error);
-    
-    // 🚀 FAULT TELEMETRY: Immediate tracking notification with open user refund dashboard hook configuration mappings
+
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-        
+
         await sendTelegramNotification(
           `🚨 *MASOMIND AGENT EXCEPTION CRASH*\n` +
           `============================\n` +
