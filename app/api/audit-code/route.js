@@ -43,8 +43,43 @@ export async function POST(req) {
   let cachedTokenInfo = { symbol: 'Unknown', amount: '0.00' };
 
   try {
-    const { prompt, txHash } = await req.json();
-    if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { prompt, txHash } = body;
+
+    if (!prompt) {
+      return NextResponse.json({ error: "Missing parameters: 'prompt' text is required." }, { status: 400 });
+    }
+
+    // 🛡️ 🚀 THE x402 INTEROPERABLE MACHINE-TO-MACHINE CHALLENGE GATE
+    if (!txHash) {
+      const defaultTokenAddress = '0x765de816845861e75a25fca122bb6898b8b1282a'; // cUSD / USDm
+      const exactCostString = "0.05";
+      const tokenConfig = TOKENS[defaultTokenAddress];
+
+      return NextResponse.json(
+        {
+          error: "HTTP 402 Payment Required: MasoMind security gateway clearance requires an on-chain transaction hash proof.",
+          paymentDetails: {
+            chain: "celo",
+            chainId: 42220,
+            assetType: "ERC20",
+            assetAddress: defaultTokenAddress,
+            amount: parseUnits(exactCostString, tokenConfig.decimals).toString(),
+            humanAmount: exactCostString,
+            symbol: tokenConfig.symbol,
+            destination: CONTRACT_ADDRESS,
+            instruction: "Invoke requestService(token, amount, prompt, serviceType) on the target contract, then attach the resulting 'txHash' to your request body payload context strings."
+          }
+        },
+        { 
+          status: 402, // 💡 Triggers programmatic payment tools (Thirdweb, LangChain adapters)
+          headers: {
+            'X-X402-Payment-Required': `ERC20:${defaultTokenAddress}:${exactCostString}`,
+            'X-X402-Destination': CONTRACT_ADDRESS
+          }
+        }
+      );
+    }
 
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
@@ -126,7 +161,6 @@ export async function POST(req) {
       year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // 🚀 MASTER PROMPT ENGINEERING: Upgraded to senior principal auditor archetype specifications
     const systemPrompt = `You are a Senior Principal Web3 Security Engineer and Smart Contract Auditor specializing in high-assurance multi-chain security audits for enterprise-tier decentralized infrastructure. Your tone is strictly analytical, formal, authoritative, and data-dense.
 
 UNIVERSAL SECURITY TARGET PARADIGMS:
