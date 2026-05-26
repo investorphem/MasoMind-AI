@@ -19,7 +19,7 @@ const celoTransports = fallback([
 ]);
 
 const TOKENS = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'USDm/cUSD' }, // cUSD / USDm
+  '0x765de816845861e75a25fca122bb6898b8b1282a': { decimals: 18, symbol: 'USDm/cUSD' }, 
   '0xceba9300f2b948710d2653dd7b07f33a8b32118c': { decimals: 6, symbol: 'USDC' },
   '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e': { decimals: 6, symbol: 'USDT' }
 };
@@ -55,12 +55,46 @@ const CINEMATIC_VIDEOS = {
 };
 
 export async function POST(req) {
-  let globalTxHash = null; 
-  let paymentDetails = null;
+  let globalTxHash = null;
+  let cachedUserAddress = null;
+  let cachedTokenInfo = { symbol: 'Unknown', amount: '0.00' };
 
   try {
-    const { prompt, txHash } = await req.json();
-    if (!prompt || !txHash) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { prompt, txHash } = body;
+
+    if (!prompt) return NextResponse.json({ error: "Missing parameters: 'prompt' is required." }, { status: 400 });
+
+    // 🛡️ 🚀 THE x402 PROGRAMMATIC AGENT GATEWAY CHALLENGE
+    if (!txHash) {
+      const defaultTokenAddress = '0x765de816845861e75a25fca122bb6898b8b1282a'; // cUSD / USDm
+      const exactCostString = "1.00"; // Video generation cost
+      const tokenConfig = TOKENS[defaultTokenAddress];
+
+      return NextResponse.json(
+        {
+          error: "HTTP 402 Payment Required: MasoMind Video Engine clearance requires on-chain payment proof.",
+          paymentDetails: {
+            chain: "celo",
+            chainId: 42220,
+            assetType: "ERC20",
+            assetAddress: defaultTokenAddress,
+            amount: parseUnits(exactCostString, tokenConfig.decimals).toString(),
+            humanAmount: exactCostString,
+            symbol: tokenConfig.symbol,
+            destination: CONTRACT_ADDRESS,
+            instruction: "Invoke requestService(token, amount, prompt, serviceType) on the target contract, then attach the resulting 'txHash' to your request body payload context strings."
+          }
+        },
+        { 
+          status: 402, 
+          headers: {
+            'X-X402-Payment-Required': `ERC20:${defaultTokenAddress}:${exactCostString}`,
+            'X-X402-Destination': CONTRACT_ADDRESS
+          }
+        }
+      );
+    }
 
     globalTxHash = txHash;
     const publicClient = createPublicClient({ chain: celo, transport: celoTransports });
@@ -81,16 +115,16 @@ export async function POST(req) {
       return NextResponse.json({ error: "Invalid execution routing parameters" }, { status: 403 });
     }
 
-    const userAddress = receipt.from;
+    cachedUserAddress = receipt.from;
     const humanAmount = formatUnits(paidAmount, tokenConfig.decimals);
-    paymentDetails = { amount: humanAmount, symbol: tokenConfig.symbol, service: paidServiceType, user: userAddress };
+    cachedTokenInfo = { symbol: tokenConfig.symbol, amount: humanAmount };
 
     // 🚀 STEP AHEAD ORDER: Inbound pipeline payment logging notification fired instantly
     await sendTelegramNotification(
       `📥 *MASOMIND INBOUND REQUEST STACK*\n` +
       `============================\n` +
       `🏢 *Service Type:* AI Video Engine Layer\n` +
-      `👤 *User Address:* \`${userAddress}\`\n` +
+      `👤 *User Address:* \`${cachedUserAddress}\`\n` +
       `💰 *Settled Payment:* ${humanAmount} ${tokenConfig.symbol}\n` +
       `⛓️ *Transaction Hash:* \`${txHash}\`\n` +
       `⏳ *Status:* Pipeline Activated. Rendering Video Stream Components...`
@@ -101,7 +135,7 @@ export async function POST(req) {
     if (!existingTx) {
       await supabase.from('transactions').insert([{
         tx_hash: txHash, prompt: prompt, service_type: 'VIDEO', status: 'PENDING', 
-        user_address: userAddress.toLowerCase(), token_address: paidToken.toLowerCase()
+        user_address: cachedUserAddress.toLowerCase(), token_address: paidToken.toLowerCase()
       }]);
     }
 
@@ -129,17 +163,14 @@ export async function POST(req) {
           address: CONTRACT_ADDRESS,
           abi: DELIVERY_ABI,
           functionName: 'deliverResult',
-          args: [userAddress, summaryMsg]
+          args: [cachedUserAddress, summaryMsg]
         });
 
-        console.log(`On-chain video asset delivery receipt broadcast confirmed: ${deliveryTxHash}`);
-        
-        // 🚀 SUCCESS TELEMETRY: Automated notification block broadcast
         await sendTelegramNotification(
           `✅ *MASOMIND EXECUTION SUCCESS*\n` +
           `============================\n` +
           `🤖 *Agent Identity:* MasoMind Enterprise Cinematic Video Node\n` +
-          `👤 *Client Account:* \`${userAddress}\`\n` +
+          `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
           `🎬 *Rendered Asset:* \`${mediaUrl}\`\n` +
           `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
           `📦 *Outbound Delivery Hash:* \`${deliveryTxHash}\`\n` +
@@ -147,12 +178,10 @@ export async function POST(req) {
         );
       } catch (blockchainError) { 
         console.error("On-chain video delivery transaction broadcast failed:", blockchainError);
-        
-        // 🚀 CONGESTION TELEMETRY: Non-blocking warning notification to prevent rendering loops
         await sendTelegramNotification(
           `⚠️ *MASOMIND BLOCKCHAIN DELIVERY DELAY*\n` +
           `============================\n` +
-          `👤 *Client Account:* \`${userAddress}\`\n` +
+          `👤 *Client Account:* \`${cachedUserAddress}\`\n` +
           `⛓️ *Inbound Request Hash:* \`${txHash}\`\n` +
           `❌ *RPC Error Exception:* \`${blockchainError.message.substring(0, 120)}...\`\n` +
           `💡 *System Note:* Video successfully generated and indexed inside Supabase storage layers. Client can stream container natively, but contract state event callback timed out.`
@@ -162,22 +191,20 @@ export async function POST(req) {
       console.warn("Skipping on-chain delivery signature: AGENT_PRIVATE_KEY is unconfigured.");
     }
 
-    // 6. Secure Return Response Streaming
     return NextResponse.json({ mediaUrl });
 
   } catch (error) {
     console.error("Video API Handler Critical Error:", error);
-    
-    // 🚀 FAULT TELEMETRY: Immediate tracking notification with open user refund database mapping
+
     if (globalTxHash) {
         await supabase.from('transactions').update({ status: 'FAILED' }).eq('tx_hash', globalTxHash);
-        
+
         await sendTelegramNotification(
           `🚨 *MASOMIND AGENT EXCEPTION CRASH*\n` +
           `============================\n` +
           `🏢 *Failed Layer:* Video Generation Render Engine\n` +
-          `👤 *Target User Account:* \`${paymentDetails?.user || 'Unresolved/Unknown Address'}\`\n` +
-          `💰 *Captured Funds:* ${paymentDetails?.amount || '0.00'} ${paymentDetails?.symbol || 'Tokens'}\n` +
+          `👤 *Target User Account:* \`${cachedUserAddress || 'Unresolved/Unknown Address'}\`\n` +
+          `💰 *Captured Funds:* ${cachedTokenInfo.amount} ${cachedTokenInfo.symbol}\n` +
           `⛓️ *Inbound Request Hash:* \`${globalTxHash}\`\n` +
           `💥 *Critical System Error:* \`${error.message}\`\n` +
           `💸 *Refund Path Status:* Open. Row logged securely. User can clear client dashboard and click 'Request Refund'.`
