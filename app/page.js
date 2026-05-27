@@ -769,30 +769,45 @@ export default function MasoMindApp() {
                     </div>
                     <div className="flex gap-1.5">
                       <button 
-                        onClick={() => {
-                          setResultData(sample.url);
-                          showToast(`Loaded ${sample.title}!`, "success");
-                        }} 
-                        className="px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-bold hover:bg-emerald-500/20 transition-colors"
-                      >
-                        Play
-                      </button>
+  onClick={() => {
+    if (!isConnected) {
+      showToast("Please connect your wallet to play samples.", "error");
+      // Trigger your existing connect logic
+      const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
+      const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
+      if (targetConnector) connect({ connector: targetConnector });
+      return;
+    }
+    setResultData(sample.url);
+    showToast(`Loaded ${sample.title}!`, "success");
+  }} 
+  className="..."
+>
+  Play
+</button>
                       <button 
-                        onClick={() => {
-                          if (mode === 'MUSIC') {
-                            setShowLyricsInput(true);
-                            setMusicTitle(sample.title);
-                            setMusicGenre(sample.genre);
-                            setMusicLyrics(sample.prompt);
-                          } else {
-                            setPrompt(sample.prompt);
-                          }
-                          showToast("Template loaded into dashboard context!", "success");
-                        }} 
-                        className="px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg text-[9px] font-bold hover:bg-zinc-700 transition-colors"
-                      >
-                        Use
-                      </button>
+  onClick={() => {
+    if (!isConnected) {
+      showToast("Please connect your wallet to use this template.", "error");
+      const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
+      const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
+      if (targetConnector) connect({ connector: targetConnector });
+      return;
+    }
+    if (mode === 'MUSIC') {
+      setShowLyricsInput(true);
+      setMusicTitle(sample.title);
+      setMusicGenre(sample.genre);
+      setMusicLyrics(sample.prompt);
+    } else {
+      setPrompt(sample.prompt);
+    }
+    showToast("Template loaded into dashboard context!", "success");
+  }} 
+  className="..."
+>
+  Use
+</button>
                     </div>
                   </div>
                   <div className="p-2.5 bg-zinc-950/40 border border-zinc-900 rounded-xl text-[10px] text-zinc-400 italic h-[58px] overflow-y-auto custom-scrollbar leading-relaxed">
