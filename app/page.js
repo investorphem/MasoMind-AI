@@ -363,7 +363,7 @@ export default function MasoMindApp() {
     setStatus('');
   };
 
-  const executeService = async () => {
+    const executeService = async () => {
     let finalPromptToSubmit = prompt;
     if (mode === 'MUSIC' && showLyricsInput) {
       if (!musicTitle || !musicGenre || !musicLyrics) {
@@ -373,7 +373,16 @@ export default function MasoMindApp() {
       finalPromptToSubmit = `MUSIC REQUEST - Title: "${musicTitle}" | Genre/Style: "${musicGenre}" | Custom Input Lyrics: [${musicLyrics}]`;
     }
 
-    if (!finalPromptToSubmit || !address) return;
+    // 🚀 FIX: Actively prompt connection if address is dropped
+    if (!address) {
+      showToast("Wallet disconnected. Please reconnect to execute.", "error");
+      const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
+      const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
+      if (targetConnector) connect({ connector: targetConnector });
+      return;
+    }
+
+    if (!finalPromptToSubmit) return;
     setResultData(null);
 
     if (pendingState) {
@@ -407,9 +416,11 @@ export default function MasoMindApp() {
       });
 
       if (allowance < amountToCharge) {
-        setStatus(`Approving ${activeToken} limit...`);
+        // 🚀 FIX: Tell the user to open their wallet app
+        setStatus(`Approving ${activeToken} limit... Check your wallet!`);
+        showToast("Please open your wallet app to approve the limit.", "success");
+        
         const approveAmount = parseUnits('10.0', token.decimals); 
-
         const approveHash = await writeContractAsync({
           address: token.address,
           abi: [{"name":"approve","type":"function","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":" ", "type":"bool"}]}],
@@ -419,7 +430,10 @@ export default function MasoMindApp() {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
       }
 
-      setStatus(`Executing ${priceStr} ${activeToken} Payment...`);
+      // 🚀 FIX: Tell the user to open their wallet app
+      setStatus(`Executing Payment... Check your wallet!`);
+      showToast("Please open your wallet app to sign the transaction.", "success");
+
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: [{
@@ -770,7 +784,7 @@ export default function MasoMindApp() {
                     <div className="flex gap-1.5">
   <button 
     onClick={() => {
-      if (!isConnected) {
+      if (!address) { // 🚀 FIX: Changed to check !address
         showToast("Please connect your wallet to play samples.", "error");
         const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
         const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
@@ -786,7 +800,7 @@ export default function MasoMindApp() {
   </button>
   <button 
     onClick={() => {
-      if (!isConnected) {
+      if (!address) { // 🚀 FIX: Changed to check !address
         showToast("Please connect your wallet to use this template.", "error");
         const hasInjectedWallet = typeof window !== 'undefined' && window.ethereum;
         const targetConnector = hasInjectedWallet ? connectors.find(c => c.id === 'injected') : connectors.find(c => c.id === 'walletConnect');
