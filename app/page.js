@@ -215,13 +215,16 @@ export default function MasoMindApp() {
     }
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     setCurrentPlaceholderIndex(0);
     setPlaceholderText('');
     setIsDeleting(false);
     setResultData(null);
     setShowLyricsInput(false);
-    setMusicTitle(''); setMusicGenre(''); setMusicLyrics('');
+    setMusicTitle(''); 
+    setMusicGenre(''); 
+    setMusicLyrics('');
+    setPrompt(''); // 🚀 FIX: Clears the main input box so the new placeholders can start typing
   }, [mode]);
 
   // Typing logic ticker that moves continuously through placeholder arrays
