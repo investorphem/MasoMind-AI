@@ -67,28 +67,28 @@ const SAMPLE_MUSIC = [
   }
 ];
 
-// 🚀 UNTOUCHED PERFECT VIDEO STUDY (Intel IoT Open Edge Analytics Loops)
+// 🚀 ENTERPRISE VIDEO SHOWCASES (Custom Hosted AI Generations)
 const SAMPLE_VIDEOS = [
   {
     id: 'v1',
-    title: 'AI Comedy Simulation',
-    genre: 'Human Mimicry / Acting',
-    prompt: 'A real human actor performing expressive comedic and dialogue script lines, tracked seamlessly through an advanced computer vision neural layer.',
-    url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/head-pose-face-detection-female.mp4'
+    title: 'When Mom Uses Tech',
+    genre: 'Family Comedy',
+    prompt: 'Funny realistic family comedy video about a mom struggling to use technology while her son teaches her. Cinematic lighting, expressive acting, and comedic timing.',
+    url: 'https://tqyxoadsgoosfjfcuzfd.supabase.co/storage/v1/object/public/vault/gemini_generated_video_70c30631.mp4'
   },
   {
     id: 'v2',
-    title: 'Behavioral Comedy Model',
-    genre: 'AI Crowds / Real People',
-    prompt: 'A high-fidelity sequence tracking human actors interacting and walking through a public space canvas mapped by an AI semantic model.',
-    url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/face-demographics-walking-and-pause.mp4'
+    title: 'Clumsy Corgi Drift',
+    genre: 'Pet Comedy / Slow-Mo',
+    prompt: 'A clumsy corgi puppy trying to fetch a tennis ball on a slippery wooden floor, its legs sliding out like a cartoon with a confused expression.',
+    url: 'https://tqyxoadsgoosfjfcuzfd.supabase.co/storage/v1/object/public/vault/gemini_generated_video_7a06488d.mp4'
   },
   {
     id: 'v3',
-    title: 'Kinetic Human Telemetry',
-    genre: 'Motion Tracking Engine',
-    prompt: 'Real human beings moving across an operational workspace landscape with integrated structural framework vectors layered by an AI agent.',
-    url: 'https://github.com/intel-iot-devkit/sample-videos/raw/master/people-detection.mp4'
+    title: 'Miscalculated Cat Jump',
+    genre: 'Slapstick / Pets',
+    prompt: 'A funny fluffy orange cat miscalculating a jump from a coffee table to a plush couch, sliding down the cushion in slow motion.',
+    url: 'https://tqyxoadsgoosfjfcuzfd.supabase.co/storage/v1/object/public/vault/gemini_generated_video_7505e50a.mp4'
   }
 ];
 
