@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock, FileText, Image as ImageIcon, Music, Video, Download, Trash2, Code, Loader2, XCircle, PlayCircle, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, FileText, Image as ImageIcon, Music, Video, Download, Trash2, Code, Loader2, XCircle, PlayCircle, AlertCircle, CheckCircle, Copy, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAccount } from 'wagmi';
 
@@ -15,10 +15,18 @@ export default function LibraryPage() {
   
   // 🚀 Premium Toast Notification System Hooks Configuration
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const [copiedId, setCopiedId] = useState(null); // Tracks which document was copied
 
   const showToast = (message, type = 'success') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3500);
+  };
+
+  const handleCopy = (id, text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    showToast("Audit report copied to clipboard!", "success");
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   useEffect(() => {
@@ -278,6 +286,8 @@ export default function LibraryPage() {
 
             {activeTab === 'DOCUMENT' && documentItems.map(item => (
               <div key={item.id} className="glass-panel rounded-3xl border border-zinc-800/80 p-5 space-y-4 mb-4 shadow-lg bg-zinc-900/40">
+                
+                {/* 🚀 THE NEW HEADER WITH COPY AND SHARE BUTTONS */}
                 <div className="flex items-center justify-between border-b border-zinc-800/50 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] px-2 py-1 bg-zinc-900 rounded border border-zinc-700 font-mono text-emerald-400 font-bold tracking-wider">
@@ -287,7 +297,24 @@ export default function LibraryPage() {
                       {new Date(item.timestamp).toLocaleDateString()}
                     </span>
                   </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleCopy(item.id, item.data)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-[10px] font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    >
+                      {copiedId === item.id ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      {copiedId === item.id ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button 
+                      onClick={() => downloadAsset(item)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-[10px] font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    >
+                      <Share2 className="w-3 h-3" /> Share
+                    </button>
+                  </div>
                 </div>
+
                 <div className="rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800/80 shadow-inner">
                   <div className="p-4 h-48 overflow-y-auto custom-scrollbar text-[10px]">
                     <div className="prose prose-invert prose-emerald max-w-none">
@@ -295,12 +322,13 @@ export default function LibraryPage() {
                     </div>
                   </div>
                 </div>
+                
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={() => downloadAsset(item)} 
                     className="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
                   >
-                    <Download className="w-3.5 h-3.5" /> Share MD
+                    <Download className="w-3.5 h-3.5" /> Download MD
                   </button>
                   <button 
                     onClick={() => deleteItem(item.id)} 
@@ -316,6 +344,7 @@ export default function LibraryPage() {
         )}
       </main>
 
+      {/* Media Overlay Modal */}
       {selectedAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
           <div className="w-full max-w-md max-h-[95vh] flex flex-col rounded-3xl border border-zinc-700 shadow-2xl overflow-hidden relative bg-[#09090b]">
