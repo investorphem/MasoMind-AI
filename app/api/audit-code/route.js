@@ -207,7 +207,7 @@ List precise instruction parameters for minimizing memory usage, decreasing depl
           parts: [{ text: `Perform an extensive multi-chain security audit on this smart contract code deployment script:\n\n${finalCodeToAudit}` }]
         }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.1 }
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
       })
     });
 
@@ -220,9 +220,15 @@ List precise instruction parameters for minimizing memory usage, decreasing depl
     if (!aiData.candidates || !aiData.candidates[0]?.content?.parts[0]?.text) {
       throw new Error("Invalid structure returned from the Gemini modeling endpoint.");
     }
-    const report = aiData.candidates[0].content.parts[0].text;
+    
+    // 🚀 FIX: Extract the report and securely stamp the legal disclaimer onto the bottom
+    let report = aiData.candidates[0].content.parts[0].text;
+    
+    const legalDisclaimer = `\n\n---\n\n### ⚠️ Legal & Operational Disclaimer\n*This security audit was generated autonomously by the MasoMind AI Core. While it utilizes advanced machine learning heuristics to identify vulnerabilities, it does not replace a manual, line-by-side review by human security professionals. This report is provided "as is" without warranties of any kind. Masonode Technologies Limited assumes no liability for any financial losses, protocol exploits, or damages resulting from the deployment or use of the audited code. Always perform extensive testnet simulations before mainnet deployment.*`;
+    
+    report += legalDisclaimer; // Attach disclaimer permanently
 
-    // 4. Update Database State to COMPLETED
+    // 4. Update Database State to COMPLETED (saves report WITH disclaimer)
     await supabase.from('transactions').update({ status: 'COMPLETED', result_data: report }).eq('tx_hash', txHash);
 
     // 5. Secure On-Chain Result Delivery Action
